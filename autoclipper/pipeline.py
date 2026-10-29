@@ -109,13 +109,13 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
     o = job["opts"]
 
     def stage(status: str, msg: str) -> None:
-        job["status"] = status
+        job.update(status=status, progress=None)
         save_job(job)
         log(f"\n▶ {msg}")
 
     try:
         stage("downloading", "Download video")
-        video, title = download(job["source"], job_dir(job["id"]))
+        video, title = download(job["source"], job_dir(job["id"]), lambda p: job.update(progress=p))
         job.update(video=str(video), title=title)
 
         stage("transcribing", "Transkripsi (Whisper)")
@@ -140,8 +140,12 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
             for i, c in enumerate(job["clips"], 1):
                 log(f"  {i}. [{c['start']:.0f}s-{c['end']:.0f}s] ({c.get('score') or '?'}) {c['title']}")
 
-        stage("rendering", f"Render {len(job['clips'])} klip")
         for clip in job["clips"]:
+            if clip["status"] != "ready":
+                clip.update(status="pending", error=None)
+        stage("rendering", f"Render {len(job['clips'])} klip")
+        for i, clip in enumerate(job["clips"], 1):
+            job["progress"] = f"{i}/{len(job['clips'])}"
             if clip["status"] != "ready":
                 render(job, clip, log)
 

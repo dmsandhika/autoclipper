@@ -3,7 +3,7 @@ from pathlib import Path
 from .render import check_complete
 
 
-def download(source: str, dest: Path) -> tuple[Path, str]:
+def download(source: str, dest: Path, on_progress=None) -> tuple[Path, str]:
     """Download video dari URL ke dest/source.mp4 (atau pakai file lokal). Return (path, judul)."""
     local = Path(source).expanduser()
     if local.exists():
@@ -26,7 +26,15 @@ def download(source: str, dest: Path) -> tuple[Path, str]:
         "socket_timeout": 60,
         "quiet": True,
         "no_warnings": True,
+        "noprogress": True,
     }
+    if on_progress:
+        def hook(d: dict) -> None:
+            total = d.get("total_bytes") or d.get("total_bytes_estimate")
+            if d["status"] == "downloading" and total:
+                on_progress(f"{d.get('downloaded_bytes', 0) / total * 100:.0f}%")
+
+        opts["progress_hooks"] = [hook]
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(source, download=not out.exists())
     try:

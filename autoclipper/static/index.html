@@ -333,7 +333,8 @@ function renderJob(job) {
   const idx = STEPS.indexOf(job.status);
   $("#steps").innerHTML = STEPS.slice(0, -1).map((s, i) => {
     const cls = job.status === "done" || (idx > i) ? "ok" : idx === i ? "on" : "";
-    return `<span class="step ${cls}">${cls === "ok" ? "✓ " : ""}${JOB_LABEL[s]}</span>`;
+    const extra = cls === "on" ? (job.progress ? ` · ${job.progress}` : s === "transcribing" ? " · bisa beberapa menit" : "") : "";
+    return `<span class="step ${cls}">${cls === "ok" ? "✓ " : ""}${JOB_LABEL[s]}${esc(extra)}</span>`;
   }).join("") + (job.status === "queued" ? `<span class="step on">Antre…</span>` : "");
 
   $("#job-err").hidden = !job.error;
