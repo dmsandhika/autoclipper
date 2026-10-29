@@ -1,4 +1,4 @@
-"""Web UI lokal: python -m autoclipper.web  → buka http://localhost:8000"""
+"""Web UI lokal: python -m autoclipper.web  → buka http://127.0.0.1:8765"""
 import argparse
 import queue
 import threading
@@ -216,10 +216,10 @@ def main() -> None:
     import uvicorn
 
     p = argparse.ArgumentParser(description="AutoClipper web UI")
-    p.add_argument("--port", type=int, default=8000)
+    p.add_argument("--port", type=int, default=8765)
     p.add_argument("--no-browser", action="store_true")
     args = p.parse_args()
-    url = f"http://localhost:{args.port}"
+    url = f"http://127.0.0.1:{args.port}"
     print(f"AutoClipper jalan di {url}")
     if not args.no_browser:
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()

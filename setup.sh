@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Setup sekali jalan: ffmpeg + Python 3.12 + virtualenv + dependencies
+# Setup sekali jalan: ffmpeg + uv + virtualenv + dependencies.
+# Pakai Python yang dikelola uv karena python@3.12 dari Homebrew bisa rusak (pyexpat vs libexpat macOS).
 set -e
 cd "$(dirname "$0")"
 command -v ffmpeg >/dev/null || brew install ffmpeg
-command -v python3.12 >/dev/null || brew install python@3.12
-[ -d .venv ] || python3.12 -m venv .venv
-.venv/bin/pip install -U pip
-.venv/bin/pip install -r requirements.txt
-echo "Setup selesai. Coba: .venv/bin/python -m autoclipper \"https://youtu.be/...\""
+command -v uv >/dev/null || brew install uv
+[ -x .venv/bin/python ] || uv venv --managed-python --python 3.12 .venv
+UV_HTTP_TIMEOUT=900 uv pip install --python .venv/bin/python -r requirements.txt
+echo "Setup selesai. Jalankan: .venv/bin/python -m autoclipper.web"

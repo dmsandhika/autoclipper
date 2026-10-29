@@ -17,7 +17,7 @@ source .venv/bin/activate
 python -m autoclipper.web
 ```
 
-Browser akan terbuka di http://localhost:8000. Paste link YouTube, tunggu prosesnya, lalu preview, edit, dan download klip.
+Browser akan terbuka di http://127.0.0.1:8765. Paste link YouTube, tunggu prosesnya, lalu preview, edit, dan download klip.
 
 Editor klip:
 - Geser handle kuning di timeline (atau pakai tombol −/+) untuk mengatur start/end.

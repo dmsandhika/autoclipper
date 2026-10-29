@@ -1,8 +1,26 @@
 """Tentukan area crop 9:16 yang mengikuti wajah pembicara."""
+import urllib.request
 from pathlib import Path
 from statistics import median
 
 import cv2
+
+MODEL_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
+MODEL_PATH = Path(__file__).resolve().parent.parent / "work" / "models" / "face_detection_yunet_2023mar.onnx"
+DETECT_W = 640
+
+
+def face_detector(w: int, h: int):
+    """Detektor wajah YuNet (model ~230KB, diunduh sekali). None kalau gagal diunduh."""
+    if not MODEL_PATH.exists():
+        try:
+            MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
+        except Exception as e:
+            print(f"  ! Gagal download model deteksi wajah, crop di tengah: {e}")
+            MODEL_PATH.unlink(missing_ok=True)
+            return None
+    return cv2.FaceDetectorYN.create(str(MODEL_PATH), "", (w, h), 0.7)
 
 
 def crop_box(video: Path, start: float, end: float, sample_every: float = 1.0) -> tuple[int, int, int, int] | None:
@@ -15,20 +33,19 @@ def crop_box(video: Path, start: float, end: float, sample_every: float = 1.0) -
         cap.release()
         return None
 
-    cascade = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
-    scale = 640 / W
+    scale = DETECT_W / W
+    size = (DETECT_W, int(H * scale))
+    detector = face_detector(*size)
     centers = []
     t = start
-    while t < end:
+    while detector and t < end:
         cap.set(cv2.CAP_PROP_POS_MSEC, t * 1000)
         ok, frame = cap.read()
         if not ok:
             break
-        small = cv2.resize(frame, None, fx=scale, fy=scale)
-        gray = cv2.cvtColor(small, cv2.COLOR_BGR2GRAY)
-        faces = cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=6, minSize=(30, 30))
-        if len(faces):
-            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
+        _, faces = detector.detect(cv2.resize(frame, size))
+        if faces is not None and len(faces):
+            x, y, w, h = max(faces, key=lambda f: f[2] * f[3])[:4]
             centers.append((x + w / 2) / scale)
         t += sample_every
     cap.release()
