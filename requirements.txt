@@ -1,0 +1,5 @@
+yt-dlp
+mlx-whisper
+opencv-python-headless
+numpy
+pillow
