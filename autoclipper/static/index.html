@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AutoClipper</title>
+<style>
+  :root {
+    --bg: #0e1014; --panel: #161920; --panel-2: #1d212a; --border: #272c37;
+    --text: #e8eaf0; --muted: #8a92a6; --accent: #ffdd00; --accent-ink: #1a1600;
+    --danger: #ff5d5d; --ok: #3ddc84; --info: #7aa2ff; --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; padding: 7px 12px; }
+  button:hover:not(:disabled) { border-color: #3a4152; }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.danger { color: var(--danger); }
+  button.ghost { background: transparent; }
+  input, select { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; outline: none; }
+  input:focus, select:focus { border-color: var(--accent); }
+  label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  a { color: inherit; }
+
+  .app { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
+  aside { border-right: 1px solid var(--border); background: var(--panel); padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
+  .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
+  .logo span { color: var(--accent); }
+  form.new { display: flex; flex-direction: column; gap: 10px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  details > div { display: flex; flex-direction: column; gap: 8px; }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; margin: 0; }
+  .check input { width: auto; }
+  .projects h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
+  .project { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; padding: 10px; border-radius: 10px; margin-bottom: 4px; }
+  .project:hover { background: var(--panel-2); }
+  .project.active { background: var(--panel-2); border-color: var(--border); }
+  .project .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; }
+  .project .s { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+  .dot.busy { background: var(--info); animation: pulse 1.2s infinite; }
+  .dot.done { background: var(--ok); }
+  .dot.error { background: var(--danger); }
+  @keyframes pulse { 50% { opacity: .3; } }
+
+  main { padding: 28px 32px; min-width: 0; }
+  .empty { color: var(--muted); text-align: center; margin-top: 18vh; }
+  .empty h2 { color: var(--text); margin-bottom: 4px; }
+  .head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
+  .head h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
+  .head .src { color: var(--muted); font-size: 12px; word-break: break-all; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .steps { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
+  .step { font-size: 12px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
+  .step.on { border-color: var(--info); color: var(--info); }
+  .step.ok { border-color: transparent; background: var(--panel-2); color: var(--ok); }
+  .err { background: #2a1517; border: 1px solid #5a2328; color: #ffb4b4; padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; white-space: pre-wrap; font-size: 13px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+  .card video, .ph { width: 100%; aspect-ratio: 9/16; background: #000; display: block; }
+  .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); padding: 16px; text-align: center; }
+  .ph small { color: var(--danger); font-size: 11px; max-height: 6em; overflow: hidden; }
+  .card .body { padding: 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
+  .card .title { font-weight: 600; line-height: 1.3; }
+  .card .meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .card .hook { font-size: 12px; color: var(--muted); font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .card .btns { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
+  .card .btns > * { flex: 1; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 8px; }
+  .dl { background: var(--accent); color: var(--accent-ink); border-radius: 8px; font-weight: 600; }
+  .score { background: var(--accent); color: var(--accent-ink); font-weight: 700; border-radius: 6px; padding: 0 6px; }
+  .spin { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--info); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Editor */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10; }
+  .modal[hidden] { display: none; }
+  .editor { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  .editor header, .editor footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
+  .editor footer { border-bottom: 0; border-top: 1px solid var(--border); }
+  .editor header h2 { margin: 0; font-size: 16px; }
+  .ed-body { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; padding: 18px; overflow: auto; }
+  .ed-body video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; display: block; }
+
+  .tl { position: relative; height: 44px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; cursor: pointer; touch-action: none; }
+  .tl-sel { position: absolute; top: 0; bottom: 0; background: rgba(255,221,0,.18); border: 2px solid var(--accent); border-radius: 6px; }
+  .tl-h { position: absolute; top: -2px; bottom: -2px; width: 14px; background: var(--accent); cursor: ew-resize; }
+  .tl-h.l { left: -8px; border-radius: 6px 0 0 6px; }
+  .tl-h.r { right: -8px; border-radius: 0 6px 6px 0; }
+  .tl-play { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; pointer-events: none; }
+  .tl-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
+
+  .times { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
+  .tbox .ctl { display: flex; gap: 4px; }
+  .tbox .ctl input { text-align: center; font-variant-numeric: tabular-nums; }
+  .tbox .ctl button { padding: 6px 8px; flex: none; }
+  .tbox .set { width: 100%; margin-top: 6px; font-size: 12px; }
+  .ed-play { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  .dur { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .dur b { color: var(--text); }
+
+  .side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .words { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px; max-height: 340px; overflow: auto; line-height: 2; }
+  .w { padding: 2px 4px; border-radius: 4px; cursor: pointer; outline: none; }
+  .w:hover { background: var(--panel-2); }
+  .w.out { color: #4c5466; }
+  .w.now { background: var(--accent); color: var(--accent-ink); }
+  .w.edited { text-decoration: underline wavy var(--info); }
+  .w[contenteditable="true"] { background: var(--panel-2); box-shadow: 0 0 0 1px var(--info); cursor: text; }
+  .hint { font-size: 12px; color: var(--muted); }
+
+  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; z-index: 20; max-width: 90vw; }
+  .toast.bad { border-color: var(--danger); color: #ffb4b4; }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    aside { border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px; }
+    .ed-body { grid-template-columns: 1fr; }
+    .modal { padding: 0; }
+    .editor { border-radius: 0; height: 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside>
+    <div class="logo">Auto<span>Clipper</span></div>
+    <form class="new" id="new-form">
+      <div>
+        <label for="src">Link YouTube</label>
+        <input id="src" name="source" placeholder="https://youtube.com/watch?v=..." required autocomplete="off">
+      </div>
+      <details>
+        <summary>Pengaturan</summary>
+        <div>
+          <div class="row">
+            <div><label>Jumlah</label><input name="n" type="number" min="1" max="20" value="5"></div>
+            <div><label>Min (dtk)</label><input name="min" type="number" min="5" value="20"></div>
+            <div><label>Max (dtk)</label><input name="max" type="number" min="10" value="60"></div>
+          </div>
+          <div class="row2">
+            <div><label>Bahasa</label>
+              <select name="lang"><option value="">Auto</option><option value="id" selected>Indonesia</option><option value="en">English</option></select>
+            </div>
+            <div><label>AI</label>
+              <select name="llm"><option value="claude">Claude</option><option value="ollama">Ollama (lokal)</option></select>
+            </div>
+          </div>
+          <label class="check"><input type="checkbox" name="captions" checked> Caption otomatis</label>
+        </div>
+      </details>
+      <button class="primary" type="submit">✂️ Buat Klip</button>
+    </form>
+    <div class="projects">
+      <h3>Project</h3>
+      <div id="projects"></div>
+    </div>
+  </aside>
+
+  <main id="main">
+    <div class="empty" id="welcome">
+      <h2>Paste link YouTube untuk mulai</h2>
+      <p>AI akan memilih momen terbaik, memotongnya jadi video vertikal, dan menambahkan caption otomatis.</p>
+    </div>
+    <div id="job" hidden>
+      <div class="head">
+        <div>
+          <h1 id="job-title"></h1>
+          <div class="src" id="job-src"></div>
+        </div>
+        <div class="actions">
+          <button id="btn-add">+ Klip manual</button>
+          <button id="btn-reselect">↻ Pilih ulang highlight</button>
+        </div>
+      </div>
+      <div class="steps" id="steps"></div>
+      <div class="err" id="job-err" hidden></div>
+      <div class="grid" id="clips"></div>
+    </div>
+  </main>
+</div>
+
+<div class="modal" id="editor" hidden>
+  <div class="editor">
+    <header>
+      <h2 id="ed-heading">Edit klip</h2>
+      <button class="ghost" id="ed-close" aria-label="Tutup">✕</button>
+    </header>
+    <div class="ed-body">
+      <div>
+        <video id="ed-video" controls playsinline preload="metadata"></video>
+        <div class="tl" id="tl">
+          <div class="tl-sel" id="tl-sel"><span class="tl-h l" data-h="start"></span><span class="tl-h r" data-h="end"></span></div>
+          <div class="tl-play" id="tl-play"></div>
+        </div>
+        <div class="tl-labels"><span id="tl-a"></span><span id="tl-b"></span></div>
+        <div class="times">
+          <div class="tbox">
+            <label>Mulai</label>
+            <div class="ctl"><button data-nudge="start:-0.5">−</button><input id="ed-start" type="number" step="0.1"><button data-nudge="start:0.5">+</button></div>
+            <button class="set" data-set="start">⇤ Set ke posisi video</button>
+          </div>
+          <div class="tbox">
+            <label>Selesai</label>
+            <div class="ctl"><button data-nudge="end:-0.5">−</button><input id="ed-end" type="number" step="0.1"><button data-nudge="end:0.5">+</button></div>
+            <button class="set" data-set="end">Set ke posisi video ⇥</button>
+          </div>
+        </div>
+        <div class="ed-play">
+          <button id="ed-preview">▶ Putar klip</button>
+          <span class="dur">Durasi <b id="ed-dur"></b></span>
+        </div>
+      </div>
+      <div class="side">
+        <div><label for="ed-title">Judul</label><input id="ed-title"></div>
+        <label class="check"><input type="checkbox" id="ed-captions"> Tampilkan caption</label>
+        <div>
+          <label>Caption / transkrip</label>
+          <div class="words" id="words"></div>
+          <p class="hint">Klik kata untuk lompat ke waktunya. Klik dua kali untuk memperbaiki kata yang salah, lalu Enter. Perbaikan kata berlaku juga untuk klip lain saat dirender ulang.</p>
+        </div>
+      </div>
+    </div>
+    <footer>
+      <span class="hint" id="ed-info"></span>
+      <div class="actions">
+        <button id="ed-cancel">Batal</button>
+        <button class="primary" id="ed-save">Simpan &amp; Render</button>
+      </div>
+    </footer>
+  </div>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60); return `${m}:${(t % 60).toFixed(1).padStart(4, "0")}`; };
+
+const BUSY = ["queued", "downloading", "transcribing", "selecting", "rendering"];
+const JOB_LABEL = { queued: "Antre", downloading: "Download video", transcribing: "Transkripsi", selecting: "AI memilih momen", rendering: "Render klip", done: "Selesai", error: "Error" };
+const STEPS = ["downloading", "transcribing", "selecting", "rendering", "done"];
+const CLIP_LABEL = { pending: "Menunggu", queued: "Antre render", rendering: "Rendering…", error: "Gagal render" };
+
+let jobs = [];
+let current = location.hash.slice(1) || null;
+
+async function api(path, opts = {}) {
+  const r = await fetch(path, {
+    method: opts.method || "GET",
+    headers: { "Content-Type": "application/json" },
+    body: opts.body ? JSON.stringify(opts.body) : undefined,
+  });
+  if (!r.ok) {
+    let msg = r.statusText;
+    try { const d = (await r.json()).detail; msg = typeof d === "string" ? d : JSON.stringify(d); } catch {}
+    throw new Error(msg);
+  }
+  return r.json();
+}
+
+let toastTimer;
+function toast(msg, bad = false) {
+  document.querySelectorAll(".toast").forEach(t => t.remove());
+  const el = Object.assign(document.createElement("div"), { className: "toast" + (bad ? " bad" : ""), textContent: msg });
+  document.body.append(el);
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.remove(), 4000);
+}
+
+function dotClass(status) { return BUSY.includes(status) ? "busy" : status; }
+
+// ---------- Daftar project ----------
+async function refresh() {
+  try { jobs = await api("/api/jobs"); } catch { return; }
+  renderProjects();
+  const job = jobs.find(j => j.id === current);
+  $("#welcome").hidden = !!job;
+  $("#job").hidden = !job;
+  if (job) renderJob(job);
+}
+
+function renderProjects() {
+  $("#projects").innerHTML = jobs.map(j => `
+    <button class="project ${j.id === current ? "active" : ""}" data-id="${esc(j.id)}">
+      <div class="t">${esc(j.title)}</div>
+      <div class="s"><span class="dot ${dotClass(j.status)}"></span>${esc(JOB_LABEL[j.status] || j.status)} · ${j.clips.length} klip</div>
+    </button>`).join("") || `<p class="hint">Belum ada project.</p>`;
+}
+
+$("#projects").addEventListener("click", e => {
+  const b = e.target.closest(".project");
+  if (!b) return;
+  current = b.dataset.id;
+  location.hash = current;
+  $("#clips").innerHTML = "";
+  refresh();
+});
+
+$("#new-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const btn = e.submitter;
+  btn.disabled = true;
+  try {
+    const job = await api("/api/jobs", { method: "POST", body: {
+      source: f.get("source"), n: +f.get("n"), min: +f.get("min"), max: +f.get("max"),
+      lang: f.get("lang") || null, llm: f.get("llm"), captions: f.get("captions") === "on",
+    }});
+    current = job.id;
+    location.hash = current;
+    $("#src").value = "";
+    $("#clips").innerHTML = "";
+    await refresh();
+  } catch (err) { toast(err.message, true); }
+  btn.disabled = false;
+});
+
+// ---------- Detail project ----------
+function renderJob(job) {
+  $("#job-title").textContent = job.title;
+  $("#job-src").textContent = job.source;
+  const busy = BUSY.includes(job.status);
+  const ready = !!job.video && ["selecting", "rendering", "done", "error"].includes(job.status);
+  $("#btn-add").disabled = !ready;
+  $("#btn-reselect").disabled = busy;
+
+  const idx = STEPS.indexOf(job.status);
+  $("#steps").innerHTML = STEPS.slice(0, -1).map((s, i) => {
+    const cls = job.status === "done" || (idx > i) ? "ok" : idx === i ? "on" : "";
+    return `<span class="step ${cls}">${cls === "ok" ? "✓ " : ""}${JOB_LABEL[s]}</span>`;
+  }).join("") + (job.status === "queued" ? `<span class="step on">Antre…</span>` : "");
+
+  $("#job-err").hidden = !job.error;
+  $("#job-err").textContent = job.error || "";
+  renderClips(job);
+}
+
+function clipCard(job, c) {
+  const dur = c.end - c.start;
+  const media = c.status === "ready"
+    ? `<video src="/api/jobs/${job.id}/clips/${c.id}/file?v=${c.rendered}" controls preload="metadata" playsinline></video>`
+    : `<div class="ph">${c.status === "error" ? "⚠️" : `<span class="spin"></span>`}<span>${CLIP_LABEL[c.status] || c.status}</span>${c.error ? `<small>${esc(c.error)}</small>` : ""}</div>`;
+  const locked = ["queued", "rendering"].includes(c.status);
+  return `${media}
+    <div class="body">
+      <div class="title">${esc(c.title)}</div>
+      <div class="meta">${c.score != null ? `<span class="score">${esc(c.score)}</span>` : ""}<span>${fmt(c.start)} – ${fmt(c.end)}</span><span>${dur.toFixed(0)} dtk</span></div>
+      ${c.hook ? `<div class="hook">“${esc(c.hook)}”</div>` : ""}
+      <div class="btns">
+        <button data-act="edit" ${locked ? "disabled" : ""}>✏️ Edit</button>
+        ${c.status === "ready" ? `<a class="dl" href="/api/jobs/${job.id}/clips/${c.id}/file?dl=1" title="Download">⬇ Unduh</a>` : ""}
+        <button data-act="delete" class="danger" ${c.status === "rendering" ? "disabled" : ""}>🗑</button>
+      </div>
+    </div>`;
+}
+
+function renderClips(job) {
+  const grid = $("#clips");
+  const ids = new Set(job.clips.map(c => c.id));
+  [...grid.children].forEach(el => { if (!ids.has(el.dataset.id)) el.remove(); });
+  for (const c of job.clips) {
+    // Hanya re-render kartu yang berubah, supaya video yang sedang diputar tidak ke-reset
+    const sig = [c.status, c.rendered, c.title, c.start, c.end, c.error].join("|");
+    let el = grid.querySelector(`[data-id="${c.id}"]`);
+    if (el && el.dataset.sig === sig) continue;
+    if (!el) {
+      el = Object.assign(document.createElement("div"), { className: "card" });
+      el.dataset.id = c.id;
+      grid.append(el);
+    }
+    el.dataset.sig = sig;
+    el.innerHTML = clipCard(job, c);
+  }
+  if (!job.clips.length && !BUSY.includes(job.status)) {
+    grid.innerHTML = `<p class="hint">Belum ada klip.</p>`;
+  }
+}
+
+$("#clips").addEventListener("click", async e => {
+  const btn = e.target.closest("[data-act]");
+  if (!btn) return;
+  const job = jobs.find(j => j.id === current);
+  const clip = job?.clips.find(c => c.id === btn.closest(".card").dataset.id);
+  if (!clip) return;
+  if (btn.dataset.act === "edit") openEditor(job, clip);
+  if (btn.dataset.act === "delete" && confirm(`Hapus klip "${clip.title}"?`)) {
+    try { await api(`/api/jobs/${job.id}/clips/${clip.id}`, { method: "DELETE" }); refresh(); }
+    catch (err) { toast(err.message, true); }
+  }
+});
+
+$("#btn-reselect").addEventListener("click", async () => {
+  if (!confirm("AI akan memilih ulang momen. Semua klip yang ada sekarang akan diganti. Lanjut?")) return;
+  try { await api(`/api/jobs/${current}/reselect`, { method: "POST" }); $("#clips").innerHTML = ""; refresh(); }
+  catch (err) { toast(err.message, true); }
+});
+
+$("#btn-add").addEventListener("click", () => openEditor(jobs.find(j => j.id === current), null));
+
+// ---------- Editor ----------
+const video = $("#ed-video");
+const ed = { job: null, clip: null, words: [], edits: new Map(), start: 0, end: 0, dur: 0, win: [0, 1], drag: null, preview: false };
+
+async function openEditor(job, clip) {
+  let segs;
+  try { segs = await api(`/api/jobs/${job.id}/transcript`); }
+  catch (err) { return toast(err.message, true); }
+  Object.assign(ed, { job, clip, edits: new Map(), preview: false });
+  ed.words = segs.flatMap((s, si) => s.words.map((w, wi) => ({ ...w, seg: si, idx: wi })));
+  ed.dur = segs.length ? segs[segs.length - 1].end : 60;
+  ed.start = clip ? clip.start : 0;
+  ed.end = clip ? clip.end : Math.min(30, ed.dur);
+
+  $("#ed-heading").textContent = clip ? "Edit klip" : "Klip baru";
+  $("#ed-title").value = clip ? clip.title : "Klip baru";
+  $("#ed-captions").checked = clip ? clip.captions !== false : true;
+  $("#ed-info").textContent = clip?.reason ? `💡 ${clip.reason}` : "";
+  $("#editor").hidden = false;
+
+  video.src = `/api/jobs/${job.id}/video`;
+  video.addEventListener("loadedmetadata", () => {
+    ed.dur = video.duration;
+    video.currentTime = ed.start;
+    update(true);
+  }, { once: true });
+  update(true);
+}
+
+function closeEditor() {
+  video.pause();
+  video.removeAttribute("src");
+  video.load();
+  $("#editor").hidden = true;
+}
+
+const pct = t => ((t - ed.win[0]) / (ed.win[1] - ed.win[0])) * 100;
+
+function update(recenter) {
+  ed.start = Math.max(0, Math.min(ed.start, ed.dur - 1));
+  ed.end = Math.max(ed.start + 1, Math.min(ed.end, ed.dur));
+  if (recenter) {
+    // Timeline di-zoom ke sekitar klip supaya mudah digeser walau videonya panjang
+    const pad = Math.max(15, (ed.end - ed.start) * 0.6);
+    ed.win = [Math.max(0, ed.start - pad), Math.min(ed.dur, ed.end + pad)];
+    renderWords();
+  }
+  $("#tl-sel").style.left = pct(ed.start) + "%";
+  $("#tl-sel").style.width = (pct(ed.end) - pct(ed.start)) + "%";
+  $("#tl-a").textContent = fmt(ed.win[0]);
+  $("#tl-b").textContent = fmt(ed.win[1]);
+  if (document.activeElement !== $("#ed-start")) $("#ed-start").value = ed.start.toFixed(1);
+  if (document.activeElement !== $("#ed-end")) $("#ed-end").value = ed.end.toFixed(1);
+  const d = ed.end - ed.start;
+  $("#ed-dur").textContent = `${d.toFixed(1)} dtk`;
+  $("#ed-dur").style.color = d > 180 ? "var(--danger)" : "";
+  document.querySelectorAll("#words .w").forEach(el => {
+    const w = ed.words[+el.dataset.i];
+    el.classList.toggle("out", w.end <= ed.start || w.start >= ed.end);
+  });
+  playhead();
+}
+
+function renderWords() {
+  const html = [];
+  ed.words.forEach((w, i) => {
+    if (w.end < ed.win[0] || w.start > ed.win[1]) return;
+    const edit = ed.edits.get(`${w.seg}:${w.idx}`);
+    html.push(`<span class="w ${edit ? "edited" : ""}" data-i="${i}">${esc(edit ? edit.word : w.word)}</span>`);
+  });
+  $("#words").innerHTML = html.join(" ") || `<span class="hint">Tidak ada ucapan di bagian ini.</span>`;
+}
+
+function playhead() {
+  const t = video.currentTime;
+  const p = pct(t);
+  $("#tl-play").style.display = p >= 0 && p <= 100 ? "" : "none";
+  $("#tl-play").style.left = p + "%";
+  document.querySelectorAll("#words .w.now").forEach(el => el.classList.remove("now"));
+  const i = ed.words.findIndex(w => t >= w.start && t < w.end);
+  if (i >= 0) $(`#words .w[data-i="${i}"]`)?.classList.add("now");
+}
+
+video.addEventListener("timeupdate", () => {
+  if (ed.preview && video.currentTime >= ed.end) { video.pause(); ed.preview = false; }
+  playhead();
+});
+video.addEventListener("pause", () => { ed.preview = false; $("#ed-preview").textContent = "▶ Putar klip"; });
+video.addEventListener("play", () => { if (ed.preview) $("#ed-preview").textContent = "⏸ Stop"; });
+
+$("#ed-preview").addEventListener("click", () => {
+  if (ed.preview) return video.pause();
+  ed.preview = true;
+  video.currentTime = ed.start;
+  video.play();
+});
+
+// Timeline: geser handle untuk ubah start/end, klik track untuk seek
+const tl = $("#tl");
+const timeAt = x => { const r = tl.getBoundingClientRect(); return ed.win[0] + ((x - r.left) / r.width) * (ed.win[1] - ed.win[0]); };
+tl.addEventListener("pointerdown", e => {
+  if (e.target.dataset.h) {
+    ed.drag = e.target.dataset.h;
+    tl.setPointerCapture(e.pointerId);
+  } else {
+    video.currentTime = Math.max(0, Math.min(timeAt(e.clientX), ed.dur));
+  }
+});
+tl.addEventListener("pointermove", e => {
+  if (!ed.drag) return;
+  const t = Math.max(ed.win[0], Math.min(timeAt(e.clientX), ed.win[1]));
+  if (ed.drag === "start") ed.start = Math.min(t, ed.end - 1);
+  else ed.end = Math.max(t, ed.start + 1);
+  video.currentTime = ed[ed.drag];
+  update(false);
+});
+tl.addEventListener("pointerup", () => { if (ed.drag) { ed.drag = null; update(true); } });
+
+document.querySelectorAll("[data-nudge]").forEach(b => b.addEventListener("click", () => {
+  const [k, d] = b.dataset.nudge.split(":");
+  ed[k] = +(ed[k] + +d).toFixed(2);
+  video.currentTime = ed[k];
+  update(true);
+}));
+document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click", () => {
+  ed[b.dataset.set] = +video.currentTime.toFixed(2);
+  update(true);
+}));
+["start", "end"].forEach(k => $(`#ed-${k}`).addEventListener("change", e => {
+  ed[k] = +e.target.value || 0;
+  update(true);
+}));
+
+// Kata: klik = seek, dobel klik = edit
+const words = $("#words");
+words.addEventListener("click", e => {
+  const el = e.target.closest(".w");
+  if (!el || el.isContentEditable) return;
+  video.currentTime = ed.words[+el.dataset.i].start;
+});
+words.addEventListener("dblclick", e => {
+  const el = e.target.closest(".w");
+  if (!el) return;
+  el.contentEditable = "true";
+  el.focus();
+  document.getSelection().selectAllChildren(el);
+});
+words.addEventListener("keydown", e => {
+  if (e.key === "Enter") { e.preventDefault(); e.target.blur(); }
+  if (e.key === "Escape") { e.target.textContent = ""; e.target.blur(); }
+});
+words.addEventListener("focusout", e => {
+  const el = e.target.closest(".w");
+  if (!el) return;
+  el.contentEditable = "false";
+  const w = ed.words[+el.dataset.i];
+  const key = `${w.seg}:${w.idx}`;
+  const text = el.textContent.trim().replace(/\s+/g, " ");
+  if (!text || text === w.word) {
+    ed.edits.delete(key);
+    el.textContent = w.word;
+  } else {
+    ed.edits.set(key, { seg: w.seg, idx: w.idx, word: text });
+  }
+  el.classList.toggle("edited", ed.edits.has(key));
+});
+
+$("#ed-close").addEventListener("click", closeEditor);
+$("#ed-cancel").addEventListener("click", closeEditor);
+document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#editor").hidden && !e.target.isContentEditable) closeEditor(); });
+
+$("#ed-save").addEventListener("click", async () => {
+  const btn = $("#ed-save");
+  btn.disabled = true;
+  const { job, clip } = ed;
+  const body = { start: +ed.start.toFixed(2), end: +ed.end.toFixed(2), title: $("#ed-title").value, captions: $("#ed-captions").checked };
+  try {
+    if (ed.edits.size) await api(`/api/jobs/${job.id}/transcript`, { method: "PATCH", body: { edits: [...ed.edits.values()] } });
+    if (clip) await api(`/api/jobs/${job.id}/clips/${clip.id}`, { method: "PUT", body });
+    else await api(`/api/jobs/${job.id}/clips`, { method: "POST", body });
+    closeEditor();
+    toast("Disimpan, klip sedang dirender…");
+    refresh();
+  } catch (err) { toast(err.message, true); }
+  btn.disabled = false;
+});
+
+refresh();
+setInterval(() => { if ($("#editor").hidden || jobs.some(j => BUSY.includes(j.status))) refresh(); }, 2000);
+</script>
+</body>
+</html>

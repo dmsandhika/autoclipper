@@ -1,25 +1,24 @@
 from pathlib import Path
 
 
-def download(source: str, work_dir: Path) -> tuple[Path, str, str]:
-    """Download video dari URL (atau pakai file lokal). Return (path, id, judul)."""
+def download(source: str, dest: Path) -> tuple[Path, str]:
+    """Download video dari URL ke dest/source.mp4 (atau pakai file lokal). Return (path, judul)."""
     local = Path(source).expanduser()
     if local.exists():
-        return local, local.stem, local.stem
+        return local.resolve(), local.stem
 
     import yt_dlp
 
-    work_dir.mkdir(parents=True, exist_ok=True)
+    dest.mkdir(parents=True, exist_ok=True)
+    out = dest / "source.mp4"
     opts = {
         "format": "bv*[height<=1080][ext=mp4]+ba[ext=m4a]/b[height<=1080][ext=mp4]/b",
         "merge_output_format": "mp4",
-        "outtmpl": str(work_dir / "%(id)s" / "source.%(ext)s"),
+        "postprocessors": [{"key": "FFmpegVideoRemuxer", "preferedformat": "mp4"}],
+        "outtmpl": str(dest / "source.%(ext)s"),
         "quiet": True,
         "no_warnings": True,
     }
     with yt_dlp.YoutubeDL(opts) as ydl:
-        info = ydl.extract_info(source, download=False)
-        path = work_dir / info["id"] / "source.mp4"
-        if not path.exists():
-            ydl.download([source])
-    return path, info["id"], info.get("title", info["id"])
+        info = ydl.extract_info(source, download=not out.exists())
+    return out.resolve(), info.get("title") or dest.name

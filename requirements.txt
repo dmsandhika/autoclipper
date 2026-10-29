@@ -3,3 +3,5 @@ mlx-whisper
 opencv-python-headless
 numpy
 pillow
+fastapi>=0.115
+uvicorn
