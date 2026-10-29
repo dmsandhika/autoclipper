@@ -1,3 +1,4 @@
+import json
 import subprocess
 from pathlib import Path
 
@@ -39,3 +40,33 @@ def render_clip(
     ]
     out.parent.mkdir(parents=True, exist_ok=True)
     subprocess.run(cmd, check=True)
+    if video_frames(out) == 0:
+        out.unlink(missing_ok=True)
+        raise RuntimeError("Hasil render tidak punya gambar. Video sumber kemungkinan rusak/tidak lengkap di bagian ini.")
+
+
+def probe(path: Path) -> dict:
+    r = subprocess.run(
+        ["ffprobe", "-v", "error", "-show_entries", "stream=codec_type,duration,nb_frames:format=duration",
+         "-of", "json", str(path)],
+        capture_output=True, text=True, check=True,
+    )
+    return json.loads(r.stdout)
+
+
+def video_frames(path: Path) -> int:
+    streams = [s for s in probe(path).get("streams", []) if s["codec_type"] == "video"]
+    return int(streams[0].get("nb_frames") or 0) if streams else 0
+
+
+def check_complete(path: Path) -> None:
+    """Pastikan track video tidak jauh lebih pendek dari durasi file (tanda download bolong)."""
+    info = probe(path)
+    total = float(info["format"]["duration"])
+    video = [float(s.get("duration") or 0) for s in info["streams"] if s["codec_type"] == "video"]
+    if not video or video[0] < total * 0.98 - 2:
+        got = video[0] if video else 0
+        raise RuntimeError(
+            f"Video hasil download tidak lengkap (gambar {got / 60:.1f} dari {total / 60:.1f} menit). "
+            "Kemungkinan koneksi putus, coba proses ulang."
+        )
