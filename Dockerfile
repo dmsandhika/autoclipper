@@ -1,7 +1,7 @@
 FROM python:3.12-slim
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ffmpeg \
+    && apt-get install -y --no-install-recommends ffmpeg libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -10,7 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY autoclipper ./autoclipper
 
-RUN useradd -m app && mkdir -p /data /models && chown app /data /models
+RUN useradd -m app && mkdir -p /data /models && chown -R app:app /data /models
 USER app
 
 ENV AUTOCLIPPER_DATA_DIR=/data \
