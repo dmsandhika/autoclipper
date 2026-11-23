@@ -234,7 +234,11 @@ def find_highlights(
     if llm not in LLMS:
         raise ValueError(f"Unknown AI '{llm}', choose one of: {', '.join(LLMS)}")
     if not segments:
-        raise RuntimeError("No speech was detected in this video, so there is nothing to pick highlights from.")
+        raise RuntimeError(
+            "No speech was detected in this video (music-only or silent audio?). If it does have speech, "
+            "set the spoken language in Settings instead of Auto-detect, or try a larger Whisper model "
+            "(AUTOCLIPPER_WHISPER_MODEL=medium)."
+        )
     model = model or default_llm_model() or DEFAULT_MODELS[llm]
     ask = {"claude": ask_claude, "anthropic": ask_anthropic, "openai": ask_openai, "ollama": ask_ollama}[llm]
 

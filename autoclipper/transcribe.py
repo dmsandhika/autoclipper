@@ -54,22 +54,31 @@ def _run_faster(video: Path, language: str | None, model: str | None) -> list[di
         compute_type="default" if device == "cuda" else "int8" if device == "cpu" else "auto",
         download_root=os.environ.get("AUTOCLIPPER_MODEL_DIR") or None,
     )
-    segments, _ = wm.transcribe(str(video), language=language, word_timestamps=True, vad_filter=True)
-    return [
-        {
-            "start": s.start,
-            "end": s.end,
-            "text": s.text,
-            "words": [{"word": w.word, "start": w.start, "end": w.end} for w in (s.words or [])],
-        }
-        for s in segments
-    ]
+    # The VAD filter skips silence/music and speeds things up, but on quiet or noisy audio it can drop
+    # everything. If it leaves nothing, try again without it.
+    for vad in (True, False):
+        segments, info = wm.transcribe(str(video), language=language, word_timestamps=True, vad_filter=vad)
+        result = [
+            {
+                "start": s.start,
+                "end": s.end,
+                "text": s.text,
+                "words": [{"word": w.word, "start": w.start, "end": w.end} for w in (s.words or [])],
+            }
+            for s in segments
+        ]
+        print(f"  language: {info.language} ({info.language_probability:.0%}), vad={vad}, segments={len(result)}")
+        if any(r["text"].strip() for r in result):
+            return result
+    return []
 
 
 def transcribe(video: Path, cache: Path, language: str | None = None, model: str | None = DEFAULT_MODEL) -> list[dict]:
     """Transcribe with word-level timestamps. The result is cached as JSON."""
     if cache.exists():
-        return json.loads(cache.read_text())
+        cached = json.loads(cache.read_text())
+        if cached:  # an empty transcript is never trusted, so a retry actually retries
+            return cached
 
     raw = _run_mlx(video, language, model) if _use_mlx() else _run_faster(video, language, model)
     segments = [
@@ -86,8 +95,9 @@ def transcribe(video: Path, cache: Path, language: str | None = None, model: str
         for s in raw
         if s["text"].strip()
     ]
-    cache.parent.mkdir(parents=True, exist_ok=True)
-    cache.write_text(json.dumps(segments, ensure_ascii=False, indent=1))
+    if segments:
+        cache.parent.mkdir(parents=True, exist_ok=True)
+        cache.write_text(json.dumps(segments, ensure_ascii=False, indent=1))
     return segments
 
 
