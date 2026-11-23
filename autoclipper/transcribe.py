@@ -29,19 +29,20 @@ def _mlx_repo(model: str | None) -> str:
     return MLX_DEFAULT if model == "large-v3-turbo" else f"mlx-community/whisper-{model}-mlx"
 
 
-def _run_mlx(video: Path, language: str | None, model: str | None) -> list[dict]:
+def _run_mlx(video: Path, language: str | None, model: str | None) -> tuple[list[dict], str | None]:
     import mlx_whisper
 
     result = mlx_whisper.transcribe(
         str(video), path_or_hf_repo=_mlx_repo(model), word_timestamps=True, language=language, verbose=False
     )
-    return [
+    segments = [
         {"start": s["start"], "end": s["end"], "text": s["text"], "words": s.get("words", [])}
         for s in result["segments"]
     ]
+    return segments, result.get("language")
 
 
-def _run_faster(video: Path, language: str | None, model: str | None) -> list[dict]:
+def _run_faster(video: Path, language: str | None, model: str | None) -> tuple[list[dict], str | None]:
     try:
         from faster_whisper import WhisperModel
     except ImportError as e:
@@ -57,7 +58,10 @@ def _run_faster(video: Path, language: str | None, model: str | None) -> list[di
     # The VAD filter skips silence/music and speeds things up, but on quiet or noisy audio it can drop
     # everything. If it leaves nothing, try again without it.
     for vad in (True, False):
-        segments, info = wm.transcribe(str(video), language=language, word_timestamps=True, vad_filter=vad)
+        # Voting over several 30s windows makes auto-detection far more reliable than the default single window
+        segments, info = wm.transcribe(
+            str(video), language=language, word_timestamps=True, vad_filter=vad, language_detection_segments=4
+        )
         result = [
             {
                 "start": s.start,
@@ -69,18 +73,50 @@ def _run_faster(video: Path, language: str | None, model: str | None) -> list[di
         ]
         print(f"  language: {info.language} ({info.language_probability:.0%}), vad={vad}, segments={len(result)}")
         if any(r["text"].strip() for r in result):
-            return result
-    return []
+            return result, info.language
+    return [], info.language
+
+
+def _meta_path(cache: Path) -> Path:
+    return cache.with_suffix(".meta.json")
+
+
+def _read_meta(cache: Path) -> dict:
+    try:
+        return json.loads(_meta_path(cache).read_text())
+    except (OSError, ValueError):
+        return {}
+
+
+def cache_valid(cache: Path, language: str | None = None, model: str | None = None) -> bool:
+    """Is the cached transcript usable for these settings? Empty transcripts and ones made in
+    another language/model than explicitly requested are not."""
+    if not cache.exists():
+        return False
+    try:
+        if not json.loads(cache.read_text()):
+            return False
+    except ValueError:
+        return False
+    meta = _read_meta(cache)
+    if language and meta.get("language") and meta["language"] != language:
+        return False
+    if model and meta.get("model") and meta["model"] != model:
+        return False
+    return True
+
+
+def detected_language(cache: Path) -> str | None:
+    return _read_meta(cache).get("language")
 
 
 def transcribe(video: Path, cache: Path, language: str | None = None, model: str | None = DEFAULT_MODEL) -> list[dict]:
-    """Transcribe with word-level timestamps. The result is cached as JSON."""
-    if cache.exists():
-        cached = json.loads(cache.read_text())
-        if cached:  # an empty transcript is never trusted, so a retry actually retries
-            return cached
+    """Transcribe with word-level timestamps. The result is cached as JSON (plus a small meta file
+    recording the language and model, so changing either re-runs the transcription)."""
+    if cache_valid(cache, language, model):
+        return json.loads(cache.read_text())
 
-    raw = _run_mlx(video, language, model) if _use_mlx() else _run_faster(video, language, model)
+    raw, lang = _run_mlx(video, language, model) if _use_mlx() else _run_faster(video, language, model)
     segments = [
         {
             "start": round(s["start"], 2),
@@ -98,6 +134,10 @@ def transcribe(video: Path, cache: Path, language: str | None = None, model: str
     if segments:
         cache.parent.mkdir(parents=True, exist_ok=True)
         cache.write_text(json.dumps(segments, ensure_ascii=False, indent=1))
+        _meta_path(cache).write_text(json.dumps({"language": language or lang, "model": model}))
+    else:
+        cache.unlink(missing_ok=True)
+        _meta_path(cache).unlink(missing_ok=True)
     return segments
 
 

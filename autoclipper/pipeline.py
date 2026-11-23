@@ -18,7 +18,7 @@ from .download import download
 from .highlights import default_llm, default_llm_model, find_highlights
 from .reframe import crop_box
 from .render import render_clip
-from .transcribe import DEFAULT_MODEL, transcribe
+from .transcribe import DEFAULT_MODEL, cache_valid, detected_language, transcribe
 
 ROOT = DATA_DIR
 DEFAULT_OPTS = {
@@ -119,7 +119,12 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
         job.update(video=str(video), title=title)
 
         stage("transcribing", "Transcribing (Whisper)")
-        segments = transcribe(video, transcript_path(job["id"]), o["lang"], o["whisper_model"])
+        tpath = transcript_path(job["id"])
+        regenerated = job["clips"] and not cache_valid(tpath, o["lang"], o["whisper_model"])
+        segments = transcribe(video, tpath, o["lang"], o["whisper_model"])
+        job["language"] = detected_language(tpath)
+        if regenerated:  # new transcript (other language/model) -> the old clip picks no longer match it
+            reselect = True
 
         if reselect or not job["clips"]:
             stage("selecting", f"Finding highlights ({o['llm'] or default_llm()})")
