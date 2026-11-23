@@ -120,9 +120,11 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
 
         stage("transcribing", "Transcribing (Whisper)")
         tpath = transcript_path(job["id"])
-        regenerated = job["clips"] and not cache_valid(tpath, o["lang"], o["whisper_model"])
+        regenerated = bool(job["clips"]) and not cache_valid(tpath, o["lang"], o["whisper_model"])
         segments = transcribe(video, tpath, o["lang"], o["whisper_model"])
         job["language"] = detected_language(tpath)
+        if job["language"]:
+            log(f"  language: {job['language']}")
         if regenerated:  # new transcript (other language/model) -> the old clip picks no longer match it
             reselect = True
 

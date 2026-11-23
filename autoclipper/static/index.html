@@ -108,6 +108,7 @@
   .head h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -.02em; line-height: 1.25; }
   .head .src { color: var(--muted); font-size: 12px; word-break: break-all; text-decoration: none; }
   .head .src:hover { text-decoration: underline; }
+  .head .lang-tag { display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); padding: 1px 6px; border-radius: 4px; margin-left: 8px; vertical-align: middle; text-transform: uppercase; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 
   /* Stepper */
@@ -302,6 +303,7 @@
         <div>
           <h1 id="job-title"></h1>
           <a class="src" id="job-src" target="_blank" rel="noopener noreferrer"></a>
+          <span class="lang-tag" id="job-lang" hidden></span>
         </div>
         <div class="actions">
           <button id="btn-add" data-i18n="add">+ Manual clip</button>
@@ -640,6 +642,15 @@ function renderJob(job) {
   const src = $("#job-src");
   src.textContent = job.source;
   if (/^https?:\/\//.test(job.source)) src.href = job.source; else src.removeAttribute("href");
+  const langEl = $("#job-lang");
+  if (langEl) {
+    if (job.language) {
+      langEl.textContent = job.language.toUpperCase();
+      langEl.hidden = false;
+    } else {
+      langEl.hidden = true;
+    }
+  }
   const busy = BUSY.includes(job.status);
   const ready = !!job.video && !["queued", "downloading", "transcribing"].includes(job.status);
   $("#btn-add").disabled = !ready;
@@ -665,6 +676,9 @@ function renderSteps(job) {
     const cls = idx > i ? "ok" : idx === i ? (failed ? "bad" : "on") : "";
     const icon = cls === "ok" ? "✓" : cls === "bad" ? "!" : i + 1;
     let sub = "", bar = "";
+    if (cls === "ok" && s === "transcribing" && job.language) {
+      sub = job.language.toUpperCase();
+    }
     if (cls === "on") {
       if (job.progress) sub = job.progress;
       else if (s === "transcribing") sub = t("sub_minutes");

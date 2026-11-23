@@ -99,9 +99,9 @@ def cache_valid(cache: Path, language: str | None = None, model: str | None = No
     except ValueError:
         return False
     meta = _read_meta(cache)
-    if language and meta.get("language") and meta["language"] != language:
+    if language and meta.get("language") != language:
         return False
-    if model and meta.get("model") and meta["model"] != model:
+    if model and meta.get("model") != model:
         return False
     return True
 
