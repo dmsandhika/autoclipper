@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 
 from .render import check_complete
@@ -28,6 +29,8 @@ def download(source: str, dest: Path, on_progress=None) -> tuple[Path, str]:
         "no_warnings": True,
         "noprogress": True,
     }
+    if os.environ.get("AUTOCLIPPER_COOKIES"):
+        opts["cookiefile"] = os.environ["AUTOCLIPPER_COOKIES"]
     if on_progress:
         def hook(d: dict) -> None:
             total = d.get("total_bytes") or d.get("total_bytes_estimate")

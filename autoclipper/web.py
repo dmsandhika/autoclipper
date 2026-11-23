@@ -1,5 +1,6 @@
 """Web UI lokal: python -m autoclipper.web  → buka http://127.0.0.1:8765"""
 import argparse
+import os
 import queue
 import threading
 import traceback
@@ -46,7 +47,7 @@ class JobIn(BaseModel):
     min: float = 20
     max: float = 60
     lang: str | None = None
-    llm: str = "claude"
+    llm: str | None = None
     captions: bool = True
 
 
@@ -216,14 +217,15 @@ def main() -> None:
     import uvicorn
 
     p = argparse.ArgumentParser(description="AutoClipper web UI")
-    p.add_argument("--port", type=int, default=8765)
+    p.add_argument("--host", default=os.environ.get("AUTOCLIPPER_HOST", "127.0.0.1"))
+    p.add_argument("--port", type=int, default=int(os.environ.get("AUTOCLIPPER_PORT", "8765")))
     p.add_argument("--no-browser", action="store_true")
     args = p.parse_args()
-    url = f"http://127.0.0.1:{args.port}"
+    url = f"http://{args.host}:{args.port}"
     print(f"AutoClipper jalan di {url}")
     if not args.no_browser:
         threading.Timer(1.5, lambda: webbrowser.open(url)).start()
-    uvicorn.run(app, host="127.0.0.1", port=args.port, log_level="warning")
+    uvicorn.run(app, host=args.host, port=args.port, log_level="warning")
 
 
 if __name__ == "__main__":

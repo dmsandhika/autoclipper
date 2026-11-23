@@ -1,0 +1,25 @@
+services:
+  autoclipper:
+    build: .
+    # image: ghcr.io/dmsandhika/autoclipper:latest
+    ports:
+      - "127.0.0.1:8765:8765"   # hanya bisa diakses dari komputer ini
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - autoclipper-data:/data      # hasil klip + cache
+      - autoclipper-models:/models  # model Whisper (diunduh sekali)
+      # - ./cookies.txt:/run/cookies.txt:ro
+    restart: unless-stopped
+
+  ollama:
+    image: ollama/ollama
+    profiles: ["ollama"]
+    volumes:
+      - ollama:/root/.ollama
+
+volumes:
+  autoclipper-data:
+  autoclipper-models:
+  ollama:

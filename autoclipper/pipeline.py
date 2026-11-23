@@ -3,6 +3,7 @@
 State tiap project disimpan di work/<id>/job.json, hasil klip di output/<id>/.
 """
 import hashlib
+import os
 import json
 import re
 import shutil
@@ -13,12 +14,12 @@ from pathlib import Path
 
 from . import captions
 from .download import download
-from .highlights import find_highlights
+from .highlights import default_llm, default_llm_model, find_highlights
 from .reframe import crop_box
 from .render import render_clip
 from .transcribe import DEFAULT_MODEL, transcribe
 
-ROOT = Path(__file__).resolve().parent.parent
+ROOT = Path(os.environ.get("AUTOCLIPPER_DATA_DIR") or Path(__file__).resolve().parent.parent).resolve()
 WORK = ROOT / "work"
 OUT = ROOT / "output"
 DEFAULT_OPTS = {
@@ -26,7 +27,7 @@ DEFAULT_OPTS = {
     "min": 20,
     "max": 60,
     "lang": None,
-    "llm": "claude",
+    "llm": None,  # None = pilih otomatis (lihat highlights.default_llm)
     "llm_model": None,
     "whisper_model": DEFAULT_MODEL,
     "captions": True,
@@ -122,7 +123,7 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
         segments = transcribe(video, transcript_path(job["id"]), o["lang"], o["whisper_model"])
 
         if reselect or not job["clips"]:
-            stage("selecting", f"Cari highlight ({o['llm']})")
+            stage("selecting", f"Cari highlight ({o['llm'] or default_llm()})")
             for old in job["clips"]:
                 if old.get("file"):
                     Path(old["file"]).unlink(missing_ok=True)

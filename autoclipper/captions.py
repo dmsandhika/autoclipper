@@ -2,12 +2,15 @@
 
 Caption dirender jadi PNG transparan + daftar concat ffmpeg (tidak butuh libass).
 """
+import os
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
 WIDTH, HEIGHT = 1080, 420
 FONT_CANDIDATES = [
+    os.environ.get("AUTOCLIPPER_FONT", ""),
+    str(Path(__file__).parent / "fonts" / "Anton-Regular.ttf"),  # dibundel (SIL OFL)
     "/System/Library/Fonts/Supplemental/Arial Black.ttf",
     "/System/Library/Fonts/Supplemental/Impact.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -19,7 +22,7 @@ STROKE = (0, 0, 0, 255)
 
 def load_font(size: int) -> ImageFont.FreeTypeFont:
     for path in FONT_CANDIDATES:
-        if Path(path).exists():
+        if path and Path(path).exists():
             return ImageFont.truetype(path, size)
     return ImageFont.load_default(size)
 

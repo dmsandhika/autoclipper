@@ -149,7 +149,7 @@
               <select name="lang"><option value="">Auto</option><option value="id" selected>Indonesia</option><option value="en">English</option></select>
             </div>
             <div><label>AI</label>
-              <select name="llm"><option value="claude">Claude</option><option value="ollama">Ollama (lokal)</option></select>
+              <select name="llm"><option value="">Otomatis</option><option value="claude">Claude Code CLI</option><option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option><option value="ollama">Ollama</option></select>
             </div>
           </div>
           <label class="check"><input type="checkbox" name="captions" checked> Caption otomatis</label>
@@ -310,7 +310,7 @@ $("#new-form").addEventListener("submit", async e => {
   try {
     const job = await api("/api/jobs", { method: "POST", body: {
       source: f.get("source"), n: +f.get("n"), min: +f.get("min"), max: +f.get("max"),
-      lang: f.get("lang") || null, llm: f.get("llm"), captions: f.get("captions") === "on",
+      lang: f.get("lang") || null, llm: f.get("llm") || null, captions: f.get("captions") === "on",
     }});
     current = job.id;
     location.hash = current;

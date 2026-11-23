@@ -2,6 +2,7 @@
 import argparse
 
 from . import pipeline
+from .highlights import LLMS
 from .transcribe import DEFAULT_MODEL
 
 
@@ -12,9 +13,9 @@ def main() -> None:
     p.add_argument("--min", type=float, default=20, help="durasi minimal klip, detik")
     p.add_argument("--max", type=float, default=60, help="durasi maksimal klip, detik")
     p.add_argument("--lang", default=None, help="kode bahasa, mis. id / en (default: auto-detect)")
-    p.add_argument("--llm", choices=["claude", "ollama"], default="claude", help="AI untuk memilih highlight")
-    p.add_argument("--llm-model", default=None, help="mis. sonnet / haiku (claude) atau qwen2.5:7b (ollama)")
-    p.add_argument("--whisper-model", default=DEFAULT_MODEL)
+    p.add_argument("--llm", choices=LLMS, default=None, help="AI untuk memilih highlight (default: env AUTOCLIPPER_LLM / otomatis)")
+    p.add_argument("--llm-model", default=None, help="mis. haiku (claude CLI), claude-haiku-5-5 (anthropic), qwen2.5:7b (ollama)")
+    p.add_argument("--whisper-model", default=DEFAULT_MODEL, help="mis. small / large-v3 (default: otomatis)")
     p.add_argument("--no-captions", action="store_true")
     p.add_argument("--reselect", action="store_true", help="pilih ulang highlight (abaikan hasil sebelumnya)")
     args = p.parse_args()

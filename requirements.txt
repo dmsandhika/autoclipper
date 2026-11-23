@@ -1,5 +1,6 @@
 yt-dlp
-mlx-whisper
+mlx-whisper; sys_platform == "darwin" and platform_machine == "arm64"
+faster-whisper; not (sys_platform == "darwin" and platform_machine == "arm64")
 opencv-python-headless
 numpy
 pillow
