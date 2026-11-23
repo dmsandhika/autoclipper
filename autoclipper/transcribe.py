@@ -3,7 +3,7 @@ import os
 import platform
 from pathlib import Path
 
-# Kosong = pilih otomatis sesuai backend (MLX di Apple Silicon, faster-whisper di tempat lain)
+# Empty = pick automatically per backend (MLX on Apple Silicon, faster-whisper elsewhere)
 DEFAULT_MODEL = os.environ.get("AUTOCLIPPER_WHISPER_MODEL") or None
 MLX_DEFAULT = "mlx-community/whisper-large-v3-turbo"
 FASTER_DEFAULT = "small"
@@ -45,7 +45,7 @@ def _run_faster(video: Path, language: str | None, model: str | None) -> list[di
     try:
         from faster_whisper import WhisperModel
     except ImportError as e:
-        raise RuntimeError("Backend transkripsi belum terpasang: pip install faster-whisper") from e
+        raise RuntimeError("No transcription backend installed. Run: pip install faster-whisper") from e
 
     device = os.environ.get("AUTOCLIPPER_DEVICE", "auto")
     wm = WhisperModel(
@@ -67,7 +67,7 @@ def _run_faster(video: Path, language: str | None, model: str | None) -> list[di
 
 
 def transcribe(video: Path, cache: Path, language: str | None = None, model: str | None = DEFAULT_MODEL) -> list[dict]:
-    """Transkripsi dengan timestamp per kata. Hasil di-cache ke JSON."""
+    """Transcribe with word-level timestamps. The result is cached as JSON."""
     if cache.exists():
         return json.loads(cache.read_text())
 
@@ -89,3 +89,14 @@ def transcribe(video: Path, cache: Path, language: str | None = None, model: str
     cache.parent.mkdir(parents=True, exist_ok=True)
     cache.write_text(json.dumps(segments, ensure_ascii=False, indent=1))
     return segments
+
+
+def backend_info(model: str | None = DEFAULT_MODEL) -> dict:
+    """Describe which transcription backend will be used (for the UI and health checks)."""
+    from importlib.util import find_spec
+
+    if _use_mlx():
+        return {"name": "mlx-whisper", "model": _mlx_repo(model).split("/")[-1], "ok": True}
+    ok = find_spec("faster_whisper") is not None
+    return {"name": "faster-whisper", "model": model or FASTER_DEFAULT, "ok": ok,
+            "problem": "" if ok else "faster-whisper is not installed (pip install faster-whisper)"}

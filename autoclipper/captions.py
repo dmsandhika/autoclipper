@@ -1,6 +1,6 @@
-"""Caption gaya TikTok: 3 kata per layar, kata yang sedang diucapkan di-highlight.
+"""TikTok-style captions: 3 words per screen, the word being spoken is highlighted.
 
-Caption dirender jadi PNG transparan + daftar concat ffmpeg (tidak butuh libass).
+Captions are rendered as transparent PNGs plus an ffmpeg concat list (no libass needed).
 """
 import os
 from pathlib import Path
@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw, ImageFont
 WIDTH, HEIGHT = 1080, 420
 FONT_CANDIDATES = [
     os.environ.get("AUTOCLIPPER_FONT", ""),
-    str(Path(__file__).parent / "fonts" / "Anton-Regular.ttf"),  # dibundel (SIL OFL)
+    str(Path(__file__).parent / "fonts" / "Anton-Regular.ttf"),  # bundled (SIL OFL)
     "/System/Library/Fonts/Supplemental/Arial Black.ttf",
     "/System/Library/Fonts/Supplemental/Impact.ttf",
     "/System/Library/Fonts/Supplemental/Arial Bold.ttf",
@@ -28,14 +28,14 @@ def load_font(size: int) -> ImageFont.FreeTypeFont:
 
 
 def clip_words(segments: list[dict], start: float, end: float) -> list[dict]:
-    """Ambil kata-kata dalam rentang klip, timestamp dijadikan relatif ke awal klip."""
+    """Take the words inside the clip range, with timestamps relative to the clip start."""
     words = [
         {"word": w["word"], "start": max(w["start"] - start, 0), "end": min(w["end"], end) - start}
         for s in segments
         for w in s["words"]
         if w["start"] >= start - 0.05 and w["end"] <= end + 0.3
     ]
-    # Tahan tiap kata sampai kata berikutnya muncul supaya caption tidak berkedip
+    # Hold each word until the next one starts so captions don't flicker
     for cur, nxt in zip(words, words[1:]):
         if nxt["start"] - cur["end"] < 0.6:
             cur["end"] = nxt["start"]
@@ -55,7 +55,7 @@ def pages(words: list[dict], per_page: int = 3) -> list[list[dict]]:
 
 
 def layout(texts: list[str], font: ImageFont.FreeTypeFont, max_w: int) -> list[list[int]]:
-    """Bagi kata ke baris-baris (index kata) supaya tidak melebihi lebar."""
+    """Split words into lines (word indexes) so no line exceeds the width."""
     space = font.getlength(" ")
     lines, cur, cur_w = [], [], 0.0
     for i, t in enumerate(texts):
@@ -90,7 +90,7 @@ def render_page(page: list[dict], active: int, font: ImageFont.FreeTypeFont) -> 
 
 
 def build(segments: list[dict], start: float, end: float, out_dir: Path, font_size: int = 88) -> Path:
-    """Render frame caption dan return path ke file concat ffmpeg."""
+    """Render the caption frames and return the path of the ffmpeg concat file."""
     out_dir.mkdir(parents=True, exist_ok=True)
     font = load_font(font_size)
     duration = end - start

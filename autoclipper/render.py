@@ -39,10 +39,13 @@ def render_clip(
         str(out),
     ]
     out.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(cmd, check=True)
+    r = subprocess.run(cmd, capture_output=True, text=True)
+    if r.returncode != 0:
+        out.unlink(missing_ok=True)
+        raise RuntimeError(f"ffmpeg failed: {(r.stderr or '').strip()[-600:] or r.returncode}")
     if video_frames(out) == 0:
         out.unlink(missing_ok=True)
-        raise RuntimeError("Hasil render tidak punya gambar. Video sumber kemungkinan rusak/tidak lengkap di bagian ini.")
+        raise RuntimeError("The rendered clip has no picture. The source video is probably corrupt or incomplete at this part.")
 
 
 def probe(path: Path) -> dict:
@@ -67,6 +70,6 @@ def check_complete(path: Path) -> None:
     if not video or video[0] < total * 0.98 - 2:
         got = video[0] if video else 0
         raise RuntimeError(
-            f"Video hasil download tidak lengkap (gambar {got / 60:.1f} dari {total / 60:.1f} menit). "
-            "Kemungkinan koneksi putus, coba proses ulang."
+            f"The downloaded video is incomplete (picture {got / 60:.1f} of {total / 60:.1f} minutes). "
+            "The connection probably dropped, please retry."
         )

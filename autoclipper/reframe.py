@@ -1,30 +1,32 @@
-"""Tentukan area crop 9:16 yang mengikuti wajah pembicara."""
+"""Compute a 9:16 crop box that follows the speaker's face."""
 import urllib.request
 from pathlib import Path
 from statistics import median
 
 import cv2
 
+from .config import CACHE
+
 MODEL_URL = "https://github.com/opencv/opencv_zoo/raw/main/models/face_detection_yunet/face_detection_yunet_2023mar.onnx"
-MODEL_PATH = Path(__file__).resolve().parent.parent / "work" / "models" / "face_detection_yunet_2023mar.onnx"
+MODEL_PATH = CACHE / "face_detection_yunet_2023mar.onnx"
 DETECT_W = 640
 
 
 def face_detector(w: int, h: int):
-    """Detektor wajah YuNet (model ~230KB, diunduh sekali). None kalau gagal diunduh."""
+    """YuNet face detector (~230KB model, downloaded once). None if the download fails."""
     if not MODEL_PATH.exists():
         try:
             MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
             urllib.request.urlretrieve(MODEL_URL, MODEL_PATH)
         except Exception as e:
-            print(f"  ! Gagal download model deteksi wajah, crop di tengah: {e}")
+            print(f"  ! Could not download the face detection model, falling back to a center crop: {e}")
             MODEL_PATH.unlink(missing_ok=True)
             return None
     return cv2.FaceDetectorYN.create(str(MODEL_PATH), "", (w, h), 0.7)
 
 
 def crop_box(video: Path, start: float, end: float, sample_every: float = 1.0) -> tuple[int, int, int, int] | None:
-    """Return (w, h, x, y) untuk filter crop ffmpeg, atau None kalau video sudah vertikal."""
+    """Return (w, h, x, y) for the ffmpeg crop filter, or None if the video is already vertical."""
     cap = cv2.VideoCapture(str(video))
     W = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     H = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))

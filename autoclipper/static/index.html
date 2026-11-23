@@ -1,196 +1,330 @@
 <!doctype html>
-<html lang="id">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark light">
 <title>AutoClipper</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23ffd60a'/%3E%3Cpath d='M10 8l12 8-12 8z' fill='%231a1600'/%3E%3C/svg%3E">
 <style>
   :root {
-    --bg: #0e1014; --panel: #161920; --panel-2: #1d212a; --border: #272c37;
-    --text: #e8eaf0; --muted: #8a92a6; --accent: #ffdd00; --accent-ink: #1a1600;
-    --danger: #ff5d5d; --ok: #3ddc84; --info: #7aa2ff; --radius: 12px;
+    --bg: #0b0d12; --panel: #13161d; --panel-2: #1a1e27; --panel-3: #222733; --border: #262b37; --border-2: #343b4b;
+    --text: #eceef4; --muted: #8b93a7; --accent: #ffd60a; --accent-ink: #1a1600; --accent-soft: rgba(255,214,10,.14);
+    --danger: #ff6b6b; --danger-bg: rgba(255,107,107,.1); --ok: #34d399; --info: #7aa2ff; --warn: #fbbf24;
+    --radius: 14px; --shadow: 0 10px 40px rgba(0,0,0,.45);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f9; --panel: #ffffff; --panel-2: #f0f2f6; --panel-3: #e6e9f0; --border: #e1e4ec; --border-2: #cdd2de;
+      --text: #151821; --muted: #666e82; --accent: #f5c400; --accent-ink: #1a1600; --accent-soft: rgba(245,196,0,.2);
+      --danger: #d92d3a; --danger-bg: rgba(217,45,58,.08); --ok: #0f9b6a; --info: #3a64d8; --warn: #b7791f;
+      --shadow: 0 10px 40px rgba(20,24,40,.15);
+    }
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
+  html { color-scheme: dark light; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
   button, input, select { font: inherit; color: inherit; }
-  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); border-radius: 8px; padding: 7px 12px; }
-  button:hover:not(:disabled) { border-color: #3a4152; }
+  button { cursor: pointer; border: 1px solid var(--border); background: var(--panel-2); border-radius: 9px; padding: 7px 12px; transition: border-color .15s, background .15s, transform .05s; }
+  button:hover:not(:disabled) { border-color: var(--border-2); background: var(--panel-3); }
+  button:active:not(:disabled) { transform: translateY(1px); }
   button:disabled { opacity: .45; cursor: not-allowed; }
-  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 650; }
+  button.primary:hover:not(:disabled) { background: var(--accent); filter: brightness(1.06); }
   button.danger { color: var(--danger); }
-  button.ghost { background: transparent; }
-  input, select { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; width: 100%; outline: none; }
-  input:focus, select:focus { border-color: var(--accent); }
-  label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+  button.danger:hover:not(:disabled) { background: var(--danger-bg); border-color: var(--danger); }
+  button.ghost { background: transparent; border-color: transparent; }
+  button.ghost:hover:not(:disabled) { background: var(--panel-2); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  input, select { background: var(--bg); border: 1px solid var(--border); border-radius: 9px; padding: 8px 10px; width: 100%; outline: none; transition: border-color .15s, box-shadow .15s; }
+  input:focus, select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; font-weight: 500; }
   a { color: inherit; }
+  [hidden] { display: none !important; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
 
-  .app { display: grid; grid-template-columns: 300px 1fr; min-height: 100vh; }
-  aside { border-right: 1px solid var(--border); background: var(--panel); padding: 20px 16px; display: flex; flex-direction: column; gap: 20px; }
-  .logo { font-weight: 800; font-size: 18px; letter-spacing: -.02em; }
-  .logo span { color: var(--accent); }
-  form.new { display: flex; flex-direction: column; gap: 10px; }
+  .app { display: grid; grid-template-columns: 320px 1fr; min-height: 100vh; }
+  aside { border-right: 1px solid var(--border); background: var(--panel); padding: 20px 16px; display: flex; flex-direction: column; gap: 18px; position: sticky; top: 0; height: 100vh; overflow: auto; }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .mark { width: 30px; height: 30px; border-radius: 9px; background: var(--accent); display: grid; place-items: center; flex: none; }
+  .mark svg { width: 14px; height: 14px; fill: var(--accent-ink); margin-left: 2px; }
+  .brand b { font-size: 17px; letter-spacing: -.02em; }
+  .brand b span { color: var(--accent); }
+  .brand small { margin-left: auto; color: var(--muted); font-size: 11px; }
+
+  .setup { background: var(--panel-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; font-size: 12px; display: flex; flex-direction: column; gap: 6px; }
+  .setup .r { display: flex; gap: 8px; align-items: center; color: var(--muted); }
+  .setup .r b { color: var(--text); font-weight: 600; }
+  .setup .prob { color: var(--warn); font-size: 12px; margin: -2px 0 0 15px; }
+  .setup .prob.bad { color: var(--danger); }
+
+  form.new { display: flex; flex-direction: column; gap: 12px; }
   .row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
   .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 8px; }
-  details > div { display: flex; flex-direction: column; gap: 8px; }
-  .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; margin: 0; }
-  .check input { width: auto; }
-  .projects h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; }
-  .project { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; padding: 10px; border-radius: 10px; margin-bottom: 4px; }
-  .project:hover { background: var(--panel-2); }
-  .project.active { background: var(--panel-2); border-color: var(--border); }
-  .project .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; }
-  .project .s { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+  .inputwrap { position: relative; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; margin-bottom: 8px; user-select: none; }
+  details summary:hover { color: var(--text); }
+  details > div { display: flex; flex-direction: column; gap: 10px; }
+  .check { display: flex; align-items: center; gap: 8px; color: var(--text); font-size: 13px; margin: 0; cursor: pointer; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .formerr { color: var(--danger); font-size: 12px; margin: -4px 0 0; }
 
-  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); flex: none; }
+  .projects { flex: 1; min-height: 0; }
+  .projects h3 { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 0 0 8px; font-weight: 600; }
+  .project { display: block; width: 100%; text-align: left; border: 1px solid transparent; background: transparent; padding: 9px 10px; border-radius: 10px; margin-bottom: 3px; }
+  .project:hover { background: var(--panel-2); border-color: transparent; }
+  .project.active { background: var(--panel-2); border-color: var(--border); }
+  .project .t { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-weight: 500; line-height: 1.35; }
+  .project .s { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; margin-top: 3px; }
+  .sidefoot { display: flex; justify-content: space-between; align-items: center; color: var(--muted); font-size: 12px; }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-radius: 0; padding: 3px 9px; font-size: 12px; background: transparent; color: var(--muted); }
+  .seg button.on { background: var(--panel-3); color: var(--text); }
+
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex: none; }
   .dot.busy { background: var(--info); animation: pulse 1.2s infinite; }
-  .dot.done { background: var(--ok); }
-  .dot.error { background: var(--danger); }
+  .dot.done, .dot.ok { background: var(--ok); }
+  .dot.error, .dot.bad { background: var(--danger); }
+  .dot.warn { background: var(--warn); }
   @keyframes pulse { 50% { opacity: .3; } }
 
-  main { padding: 28px 32px; min-width: 0; }
-  .empty { color: var(--muted); text-align: center; margin-top: 18vh; }
-  .empty h2 { color: var(--text); margin-bottom: 4px; }
-  .head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 18px; }
-  .head h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: -.01em; }
-  .head .src { color: var(--muted); font-size: 12px; word-break: break-all; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .steps { display: flex; gap: 6px; margin-bottom: 20px; flex-wrap: wrap; }
-  .step { font-size: 12px; padding: 4px 10px; border-radius: 99px; border: 1px solid var(--border); color: var(--muted); }
-  .step.on { border-color: var(--info); color: var(--info); }
-  .step.ok { border-color: transparent; background: var(--panel-2); color: var(--ok); }
-  .err { background: #2a1517; border: 1px solid #5a2328; color: #ffb4b4; padding: 10px 14px; border-radius: 10px; margin-bottom: 18px; white-space: pre-wrap; font-size: 13px; }
+  main { padding: 28px 36px 60px; min-width: 0; max-width: 1400px; }
+  .banner { border: 1px solid var(--danger); background: var(--danger-bg); color: var(--danger); border-radius: 12px; padding: 10px 14px; margin-bottom: 18px; font-size: 13px; }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
-  .card video, .ph { width: 100%; aspect-ratio: 9/16; background: #000; display: block; }
-  .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--muted); padding: 16px; text-align: center; }
-  .ph small { color: var(--danger); font-size: 11px; max-height: 6em; overflow: hidden; }
-  .card .body { padding: 12px; display: flex; flex-direction: column; gap: 6px; flex: 1; }
-  .card .title { font-weight: 600; line-height: 1.3; }
-  .card .meta { font-size: 12px; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  /* Welcome */
+  .hero { max-width: 720px; margin: 9vh auto 0; text-align: center; }
+  .hero h1 { font-size: clamp(26px, 4vw, 38px); letter-spacing: -.03em; line-height: 1.15; margin: 0 0 12px; }
+  .hero h1 span { background: linear-gradient(90deg, var(--accent), #ff9f0a); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .hero p { color: var(--muted); font-size: 16px; margin: 0 auto 28px; max-width: 560px; }
+  .how { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; text-align: left; }
+  .how > div { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .how .n { width: 26px; height: 26px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); display: grid; place-items: center; font-weight: 700; font-size: 13px; margin-bottom: 10px; }
+  .how b { display: block; margin-bottom: 2px; }
+  .how span { color: var(--muted); font-size: 13px; }
+  .hero .legal { color: var(--muted); font-size: 12px; margin: 26px 0 0; }
+
+  /* Job header */
+  .head { display: flex; gap: 16px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; margin-bottom: 20px; }
+  .head h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: -.02em; line-height: 1.25; }
+  .head .src { color: var(--muted); font-size: 12px; word-break: break-all; text-decoration: none; }
+  .head .src:hover { text-decoration: underline; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+
+  /* Stepper */
+  .stepper { display: flex; background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; margin-bottom: 20px; gap: 6px; overflow-x: auto; }
+  .stp { flex: 1; min-width: 130px; display: flex; gap: 10px; align-items: flex-start; position: relative; }
+  .stp .c { width: 26px; height: 26px; border-radius: 50%; border: 2px solid var(--border-2); display: grid; place-items: center; font-size: 12px; font-weight: 700; color: var(--muted); flex: none; }
+  .stp .tx { min-width: 0; }
+  .stp .l { font-weight: 600; font-size: 13px; color: var(--muted); }
+  .stp .sub { font-size: 12px; color: var(--muted); }
+  .stp.on .c { border-color: var(--info); color: var(--info); }
+  .stp.on .l { color: var(--text); }
+  .stp.on .sub { color: var(--info); }
+  .stp.ok .c { background: var(--ok); border-color: var(--ok); color: #04210f; }
+  .stp.ok .l { color: var(--text); }
+  .stp.bad .c { background: var(--danger); border-color: var(--danger); color: #fff; }
+  .stp.bad .l { color: var(--danger); }
+  .bar { height: 4px; background: var(--panel-3); border-radius: 4px; overflow: hidden; margin-top: 6px; }
+  .bar i { display: block; height: 100%; width: 0; background: var(--info); border-radius: 4px; transition: width .4s; }
+  .bar.ind i { width: 40%; animation: slide 1.3s ease-in-out infinite; }
+  @keyframes slide { from { margin-left: -40%; } to { margin-left: 100%; } }
+
+  .err { background: var(--danger-bg); border: 1px solid var(--danger); color: var(--text); padding: 12px 14px; border-radius: 12px; margin-bottom: 20px; font-size: 13px; display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; }
+  .err .m { white-space: pre-wrap; word-break: break-word; min-width: 0; }
+  .err .m b { color: var(--danger); display: block; margin-bottom: 2px; }
+  .err button { flex: none; }
+
+  /* Clip cards */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 20px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: border-color .15s, transform .15s; }
+  .card:hover { border-color: var(--border-2); }
+  .media { position: relative; background: #000; }
+  .media video, .ph { width: 100%; aspect-ratio: 9/16; display: block; background: #000; object-fit: cover; }
+  .ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: #9aa2b6; padding: 16px; text-align: center; font-size: 13px; }
+  .ph .ico { font-size: 26px; }
+  .ph small { color: #ff9a9a; font-size: 11px; max-height: 7em; overflow: auto; word-break: break-word; }
+  .badge { position: absolute; top: 8px; padding: 2px 8px; border-radius: 99px; font-size: 11px; font-weight: 700; backdrop-filter: blur(6px); pointer-events: none; }
+  .badge.score { left: 8px; background: var(--accent); color: var(--accent-ink); }
+  .badge.dur { right: 8px; background: rgba(0,0,0,.6); color: #fff; font-variant-numeric: tabular-nums; }
+  .card .body { padding: 12px 12px 12px; display: flex; flex-direction: column; gap: 5px; flex: 1; }
+  .card .title { font-weight: 650; line-height: 1.3; }
+  .card .meta { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
   .card .hook { font-size: 12px; color: var(--muted); font-style: italic; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-  .card .btns { display: flex; gap: 6px; margin-top: auto; padding-top: 6px; }
-  .card .btns > * { flex: 1; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 8px; }
-  .dl { background: var(--accent); color: var(--accent-ink); border-radius: 8px; font-weight: 600; }
-  .score { background: var(--accent); color: var(--accent-ink); font-weight: 700; border-radius: 6px; padding: 0 6px; }
-  .spin { width: 22px; height: 22px; border: 3px solid var(--border); border-top-color: var(--info); border-radius: 50%; animation: spin .8s linear infinite; }
+  .card .btns { display: flex; gap: 6px; margin-top: auto; padding-top: 8px; }
+  .card .btns > * { flex: 1; text-align: center; text-decoration: none; font-size: 13px; padding: 6px 8px; white-space: nowrap; }
+  .card .btns .icon { flex: none; width: 36px; }
+  .dl { background: var(--accent); color: var(--accent-ink); border-radius: 9px; font-weight: 650; display: inline-block; }
+  .dl:hover { filter: brightness(1.06); }
+  .spin { width: 22px; height: 22px; border: 3px solid var(--border-2); border-top-color: var(--info); border-radius: 50%; animation: spin .8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
+  .skel { background: linear-gradient(90deg, var(--panel) 25%, var(--panel-2) 37%, var(--panel) 63%); background-size: 400% 100%; animation: shimmer 1.4s infinite; border: 1px solid var(--border); border-radius: var(--radius); aspect-ratio: 9/18; }
+  @keyframes shimmer { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+  .hint { font-size: 12px; color: var(--muted); }
+  .emptyclips { grid-column: 1 / -1; text-align: center; color: var(--muted); padding: 40px 0; border: 1px dashed var(--border-2); border-radius: var(--radius); }
 
   /* Editor */
-  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10; }
-  .modal[hidden] { display: none; }
-  .editor { background: var(--panel); border: 1px solid var(--border); border-radius: 16px; width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.72); display: flex; align-items: center; justify-content: center; padding: 24px; z-index: 10; backdrop-filter: blur(3px); }
+  .editor { background: var(--panel); border: 1px solid var(--border); border-radius: 18px; width: min(1200px, 100%); max-height: 100%; display: flex; flex-direction: column; overflow: hidden; box-shadow: var(--shadow); }
   .editor header, .editor footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--border); }
   .editor footer { border-bottom: 0; border-top: 1px solid var(--border); }
   .editor header h2 { margin: 0; font-size: 16px; }
-  .ed-body { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; padding: 18px; overflow: auto; }
-  .ed-body video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 10px; display: block; }
+  .ed-body { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; padding: 18px; overflow: auto; }
+  .ed-body video { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; display: block; }
 
-  .tl { position: relative; height: 44px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; margin-top: 12px; cursor: pointer; touch-action: none; }
-  .tl-sel { position: absolute; top: 0; bottom: 0; background: rgba(255,221,0,.18); border: 2px solid var(--accent); border-radius: 6px; }
-  .tl-h { position: absolute; top: -2px; bottom: -2px; width: 14px; background: var(--accent); cursor: ew-resize; }
-  .tl-h.l { left: -8px; border-radius: 6px 0 0 6px; }
-  .tl-h.r { right: -8px; border-radius: 0 6px 6px 0; }
-  .tl-play { position: absolute; top: -4px; bottom: -4px; width: 2px; background: #fff; pointer-events: none; }
+  .tl { position: relative; height: 46px; background: var(--bg); border: 1px solid var(--border); border-radius: 10px; margin-top: 14px; cursor: pointer; touch-action: none; }
+  .tl-sel { position: absolute; top: 0; bottom: 0; background: var(--accent-soft); border: 2px solid var(--accent); border-radius: 6px; }
+  .tl-h { position: absolute; top: -3px; bottom: -3px; width: 14px; background: var(--accent); cursor: ew-resize; }
+  .tl-h.l { left: -8px; border-radius: 7px 0 0 7px; }
+  .tl-h.r { right: -8px; border-radius: 0 7px 7px 0; }
+  .tl-play { position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--text); pointer-events: none; }
   .tl-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-top: 4px; font-variant-numeric: tabular-nums; }
 
   .times { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 14px; }
   .tbox .ctl { display: flex; gap: 4px; }
   .tbox .ctl input { text-align: center; font-variant-numeric: tabular-nums; }
-  .tbox .ctl button { padding: 6px 8px; flex: none; }
+  .tbox .ctl button { padding: 6px 10px; flex: none; }
   .tbox .set { width: 100%; margin-top: 6px; font-size: 12px; }
-  .ed-play { display: flex; gap: 8px; align-items: center; margin-top: 14px; }
+  .ed-play { display: flex; gap: 8px; align-items: center; margin-top: 14px; flex-wrap: wrap; }
   .dur { margin-left: auto; color: var(--muted); font-variant-numeric: tabular-nums; }
   .dur b { color: var(--text); }
+  kbd { font: 11px ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--panel-3); border: 1px solid var(--border-2); border-bottom-width: 2px; border-radius: 5px; padding: 0 5px; color: var(--text); }
+  .keys { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px 14px; }
 
   .side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
-  .words { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 10px; max-height: 340px; overflow: auto; line-height: 2; }
-  .w { padding: 2px 4px; border-radius: 4px; cursor: pointer; outline: none; }
+  .words { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 10px; max-height: 340px; overflow: auto; line-height: 2; }
+  .w { padding: 2px 4px; border-radius: 5px; cursor: pointer; outline: none; }
   .w:hover { background: var(--panel-2); }
-  .w.out { color: #4c5466; }
+  .w.out { color: var(--muted); opacity: .45; }
   .w.now { background: var(--accent); color: var(--accent-ink); }
   .w.edited { text-decoration: underline wavy var(--info); }
   .w[contenteditable="true"] { background: var(--panel-2); box-shadow: 0 0 0 1px var(--info); cursor: text; }
-  .hint { font-size: 12px; color: var(--muted); }
 
-  .toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: var(--panel-2); border: 1px solid var(--border); padding: 10px 16px; border-radius: 10px; z-index: 20; max-width: 90vw; }
-  .toast.bad { border-color: var(--danger); color: #ffb4b4; }
+  dialog { background: var(--panel); color: var(--text); border: 1px solid var(--border-2); border-radius: 16px; padding: 20px; width: min(420px, calc(100% - 32px)); box-shadow: var(--shadow); }
+  dialog::backdrop { background: rgba(0,0,0,.6); backdrop-filter: blur(2px); }
+  dialog h3 { margin: 0 0 6px; font-size: 16px; }
+  dialog p { margin: 0 0 18px; color: var(--muted); }
+  dialog .actions { justify-content: flex-end; }
 
-  @media (max-width: 860px) {
+  .toasts { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 30; display: flex; flex-direction: column; gap: 8px; align-items: center; max-width: 92vw; }
+  .toast { background: var(--panel-3); border: 1px solid var(--border-2); padding: 10px 16px; border-radius: 12px; box-shadow: var(--shadow); animation: up .2s; }
+  .toast.bad { border-color: var(--danger); color: var(--danger); background: var(--panel); }
+  @keyframes up { from { opacity: 0; transform: translateY(8px); } }
+
+  @media (max-width: 900px) {
     .app { grid-template-columns: 1fr; }
-    aside { border-right: 0; border-bottom: 1px solid var(--border); }
-    main { padding: 20px 16px; }
+    aside { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--border); }
+    main { padding: 20px 16px 48px; }
+    .how { grid-template-columns: 1fr; }
+    .hero { margin-top: 24px; }
     .ed-body { grid-template-columns: 1fr; }
     .modal { padding: 0; }
     .editor { border-radius: 0; height: 100%; }
   }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 </style>
 </head>
 <body>
 <div class="app">
   <aside>
-    <div class="logo">Auto<span>Clipper</span></div>
+    <div class="brand">
+      <div class="mark"><svg viewBox="0 0 10 10"><path d="M0 0l10 5-10 5z"/></svg></div>
+      <b>Auto<span>Clipper</span></b>
+      <small id="ver"></small>
+    </div>
+
+    <div class="setup" id="setup" hidden></div>
+
     <form class="new" id="new-form">
       <div>
-        <label for="src">Link YouTube</label>
-        <input id="src" name="source" placeholder="https://youtube.com/watch?v=..." required autocomplete="off">
+        <label for="src" data-i18n="link">Video link</label>
+        <input id="src" name="source" placeholder="https://youtube.com/watch?v=..." data-i18n-ph="link_ph" required autocomplete="off" spellcheck="false">
       </div>
       <details>
-        <summary>Pengaturan</summary>
+        <summary data-i18n="settings">Settings</summary>
         <div>
           <div class="row">
-            <div><label>Jumlah</label><input name="n" type="number" min="1" max="20" value="5"></div>
-            <div><label>Min (dtk)</label><input name="min" type="number" min="5" value="20"></div>
-            <div><label>Max (dtk)</label><input name="max" type="number" min="10" value="60"></div>
+            <div><label for="f-n" data-i18n="count">Clips</label><input id="f-n" name="n" type="number" min="1" max="20" value="5"></div>
+            <div><label for="f-min" data-i18n="min">Min (s)</label><input id="f-min" name="min" type="number" min="5" max="170" value="20"></div>
+            <div><label for="f-max" data-i18n="max">Max (s)</label><input id="f-max" name="max" type="number" min="10" max="180" value="60"></div>
           </div>
           <div class="row2">
-            <div><label>Bahasa</label>
-              <select name="lang"><option value="">Auto</option><option value="id" selected>Indonesia</option><option value="en">English</option></select>
+            <div><label for="f-lang" data-i18n="spoken">Spoken language</label>
+              <select id="f-lang" name="lang">
+                <option value="" data-i18n="auto">Auto-detect</option>
+                <option value="en">English</option><option value="id">Indonesia</option><option value="es">Español</option>
+                <option value="pt">Português</option><option value="fr">Français</option><option value="de">Deutsch</option>
+                <option value="ja">日本語</option><option value="ko">한국어</option><option value="zh">中文</option>
+                <option value="hi">हिन्दी</option><option value="ar">العربية</option><option value="ru">Русский</option><option value="tr">Türkçe</option>
+              </select>
             </div>
-            <div><label>AI</label>
-              <select name="llm"><option value="">Otomatis</option><option value="claude">Claude Code CLI</option><option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option><option value="ollama">Ollama</option></select>
+            <div><label for="f-llm">AI</label>
+              <select id="f-llm" name="llm">
+                <option value="" data-i18n="auto_ai">Default</option>
+                <option value="anthropic">Anthropic API</option><option value="openai">OpenAI API</option>
+                <option value="ollama">Ollama</option><option value="claude">Claude Code CLI</option>
+              </select>
             </div>
           </div>
-          <label class="check"><input type="checkbox" name="captions" checked> Caption otomatis</label>
+          <label class="check"><input type="checkbox" name="captions" checked> <span data-i18n="captions">Auto captions</span></label>
         </div>
       </details>
-      <button class="primary" type="submit">✂️ Buat Klip</button>
+      <div class="formerr" id="formerr" hidden></div>
+      <button class="primary" type="submit" id="go" data-i18n="make">Create clips</button>
     </form>
+
     <div class="projects">
-      <h3>Project</h3>
+      <h3 data-i18n="projects">Projects</h3>
       <div id="projects"></div>
+    </div>
+
+    <div class="sidefoot">
+      <span data-i18n="ui_lang">Interface</span>
+      <div class="seg" id="lang-seg"><button data-lang="en">EN</button><button data-lang="id">ID</button></div>
     </div>
   </aside>
 
   <main id="main">
-    <div class="empty" id="welcome">
-      <h2>Paste link YouTube untuk mulai</h2>
-      <p>AI akan memilih momen terbaik, memotongnya jadi video vertikal, dan menambahkan caption otomatis.</p>
+    <div class="banner" id="offline" hidden data-i18n="offline">Lost connection to the server. Retrying…</div>
+
+    <div class="hero" id="welcome">
+      <h1><span data-i18n="hero_a">Long video in,</span> <span data-i18n="hero_b">viral clips out.</span></h1>
+      <p data-i18n="hero_p">Paste a link. AI picks the best moments, crops them to vertical 9:16 following the speaker, and adds word-by-word captions.</p>
+      <div class="how">
+        <div><div class="n">1</div><b data-i18n="how1">Paste a link</b><span data-i18n="how1d">YouTube or any link yt-dlp supports.</span></div>
+        <div><div class="n">2</div><b data-i18n="how2">AI finds highlights</b><span data-i18n="how2d">Whisper transcribes, an LLM picks the hooks.</span></div>
+        <div><div class="n">3</div><b data-i18n="how3">Edit &amp; download</b><span data-i18n="how3d">Trim on the timeline, fix captions, export.</span></div>
+      </div>
+      <p class="legal" data-i18n="legal">Only clip videos you own or have permission to reuse.</p>
     </div>
+
     <div id="job" hidden>
       <div class="head">
         <div>
           <h1 id="job-title"></h1>
-          <div class="src" id="job-src"></div>
+          <a class="src" id="job-src" target="_blank" rel="noopener noreferrer"></a>
         </div>
         <div class="actions">
-          <button id="btn-add">+ Klip manual</button>
-          <button id="btn-reselect">↻ Pilih ulang highlight</button>
+          <button id="btn-add" data-i18n="add">+ Manual clip</button>
+          <button id="btn-reselect" data-i18n="reselect">↻ Re-pick highlights</button>
+          <a id="btn-zip" class="dl" style="padding:7px 12px" hidden data-i18n="zip">⬇ Download all</a>
+          <button id="btn-delete" class="ghost danger" data-i18n-title="delete" title="Delete project" aria-label="Delete project">🗑</button>
         </div>
       </div>
-      <div class="steps" id="steps"></div>
-      <div class="err" id="job-err" hidden></div>
+      <div class="stepper" id="steps" role="list"></div>
+      <div class="err" id="job-err" hidden>
+        <div class="m"><b data-i18n="failed">Something went wrong</b><span id="job-err-m"></span></div>
+        <button id="btn-retry" class="primary" data-i18n="retry">Retry</button>
+      </div>
       <div class="grid" id="clips"></div>
     </div>
   </main>
 </div>
 
-<div class="modal" id="editor" hidden>
+<div class="modal" id="editor" hidden role="dialog" aria-modal="true" aria-labelledby="ed-heading">
   <div class="editor">
     <header>
-      <h2 id="ed-heading">Edit klip</h2>
-      <button class="ghost" id="ed-close" aria-label="Tutup">✕</button>
+      <h2 id="ed-heading">Edit clip</h2>
+      <button class="ghost" id="ed-close" aria-label="Close">✕</button>
     </header>
     <div class="ed-body">
       <div>
@@ -202,52 +336,152 @@
         <div class="tl-labels"><span id="tl-a"></span><span id="tl-b"></span></div>
         <div class="times">
           <div class="tbox">
-            <label>Mulai</label>
-            <div class="ctl"><button data-nudge="start:-0.5">−</button><input id="ed-start" type="number" step="0.1"><button data-nudge="start:0.5">+</button></div>
-            <button class="set" data-set="start">⇤ Set ke posisi video</button>
+            <label for="ed-start" data-i18n="start">Start</label>
+            <div class="ctl"><button data-nudge="start:-0.5" aria-label="-0.5s">−</button><input id="ed-start" type="number" step="0.1"><button data-nudge="start:0.5" aria-label="+0.5s">+</button></div>
+            <button class="set" data-set="start" data-i18n="set_start">⇤ Set to playhead</button>
           </div>
           <div class="tbox">
-            <label>Selesai</label>
-            <div class="ctl"><button data-nudge="end:-0.5">−</button><input id="ed-end" type="number" step="0.1"><button data-nudge="end:0.5">+</button></div>
-            <button class="set" data-set="end">Set ke posisi video ⇥</button>
+            <label for="ed-end" data-i18n="end">End</label>
+            <div class="ctl"><button data-nudge="end:-0.5" aria-label="-0.5s">−</button><input id="ed-end" type="number" step="0.1"><button data-nudge="end:0.5" aria-label="+0.5s">+</button></div>
+            <button class="set" data-set="end" data-i18n="set_end">Set to playhead ⇥</button>
           </div>
         </div>
         <div class="ed-play">
-          <button id="ed-preview">▶ Putar klip</button>
-          <span class="dur">Durasi <b id="ed-dur"></b></span>
+          <button id="ed-preview">▶</button>
+          <span class="dur"><span data-i18n="duration">Duration</span> <b id="ed-dur"></b></span>
+        </div>
+        <div class="keys hint">
+          <span><kbd>Space</kbd> <span data-i18n="k_play">play/pause</span></span>
+          <span><kbd>I</kbd> / <kbd>O</kbd> <span data-i18n="k_io">set start / end</span></span>
+          <span><kbd>←</kbd> <kbd>→</kbd> <span data-i18n="k_seek">seek (Shift = fine)</span></span>
         </div>
       </div>
       <div class="side">
-        <div><label for="ed-title">Judul</label><input id="ed-title"></div>
-        <label class="check"><input type="checkbox" id="ed-captions"> Tampilkan caption</label>
+        <div><label for="ed-title" data-i18n="title">Title</label><input id="ed-title" maxlength="200"></div>
+        <label class="check"><input type="checkbox" id="ed-captions"> <span data-i18n="show_captions">Show captions</span></label>
         <div>
-          <label>Caption / transkrip</label>
+          <label data-i18n="transcript">Captions / transcript</label>
           <div class="words" id="words"></div>
-          <p class="hint">Klik kata untuk lompat ke waktunya. Klik dua kali untuk memperbaiki kata yang salah, lalu Enter. Perbaikan kata berlaku juga untuk klip lain saat dirender ulang.</p>
+          <p class="hint" data-i18n="words_hint">Click a word to jump to it. Double-click to fix a misheard word, then press Enter. Fixes apply to the whole transcript.</p>
         </div>
       </div>
     </div>
     <footer>
       <span class="hint" id="ed-info"></span>
       <div class="actions">
-        <button id="ed-cancel">Batal</button>
-        <button class="primary" id="ed-save">Simpan &amp; Render</button>
+        <button id="ed-cancel" data-i18n="cancel">Cancel</button>
+        <button class="primary" id="ed-save" data-i18n="save">Save &amp; render</button>
       </div>
     </footer>
   </div>
 </div>
 
+<dialog id="confirm">
+  <h3 id="c-title"></h3>
+  <p id="c-msg"></p>
+  <div class="actions">
+    <button id="c-no" data-i18n="cancel">Cancel</button>
+    <button id="c-yes" class="primary"></button>
+  </div>
+</dialog>
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
 <script>
 const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const fmt = t => { t = Math.max(0, t || 0); const m = Math.floor(t / 60); return `${m}:${(t % 60).toFixed(1).padStart(4, "0")}`; };
+const store = {
+  get(k) { try { return localStorage.getItem(k); } catch { return null; } },
+  set(k, v) { try { localStorage.setItem(k, v); } catch {} },
+};
 
+// ---------- i18n ----------
+const I18N = {
+  en: {
+    link: "Video link", link_ph: "https://youtube.com/watch?v=...", settings: "Settings", count: "Clips", min: "Min (s)", max: "Max (s)",
+    spoken: "Spoken language", auto: "Auto-detect", auto_ai: "Default", captions: "Auto captions", make: "Create clips", projects: "Projects", no_projects: "No projects yet.",
+    ui_lang: "Interface", offline: "Lost connection to the server. Retrying…",
+    hero_a: "Long video in,", hero_b: "viral clips out.",
+    hero_p: "Paste a link. AI picks the best moments, crops them to vertical 9:16 following the speaker, and adds word-by-word captions.",
+    how1: "Paste a link", how1d: "YouTube or any link yt-dlp supports.", how2: "AI finds highlights", how2d: "Whisper transcribes, an LLM picks the hooks.",
+    how3: "Edit & download", how3d: "Trim on the timeline, fix captions, export.", legal: "Only clip videos you own or have permission to reuse.",
+    add: "+ Manual clip", reselect: "↻ Re-pick highlights", zip: "⬇ Download all", delete: "Delete project", failed: "Something went wrong", retry: "Retry",
+    clips: "clips", clip: "clip", s: "s",
+    st_downloading: "Download", st_transcribing: "Transcribe", st_selecting: "Find highlights", st_rendering: "Render", st_queued: "Queued", st_done: "Done", st_error: "Failed",
+    sub_wait: "Waiting…", sub_minutes: "can take a few minutes", sub_queued: "Waiting for the worker…",
+    c_pending: "Waiting", c_queued: "Queued to render", c_rendering: "Rendering…", c_error: "Render failed",
+    edit: "Edit", download: "Download", del: "Delete",
+    start: "Start", end: "End", set_start: "⇤ Set to playhead", set_end: "Set to playhead ⇥", duration: "Duration", sec: "s",
+    title: "Title", show_captions: "Show captions", transcript: "Captions / transcript",
+    words_hint: "Click a word to jump to it. Double-click to fix a misheard word, then press Enter. Fixes apply to the whole transcript.",
+    k_play: "play/pause", k_io: "set start / end", k_seek: "seek (Shift = fine)",
+    cancel: "Cancel", save: "Save & render", edit_clip: "Edit clip", new_clip: "New clip", play_clip: "▶ Play clip", stop: "⏸ Stop", new_title: "New clip",
+    saved: "Saved, rendering…", no_speech: "No speech in this part.",
+    del_clip_t: "Delete this clip?", del_clip_m: "“{t}” and its rendered file will be removed.",
+    del_job_t: "Delete this project?", del_job_m: "The downloaded video, transcript and all rendered clips will be removed from disk.",
+    resel_t: "Re-pick highlights?", resel_m: "The AI will choose the moments again. All current clips will be replaced.",
+    delete_btn: "Delete", continue: "Continue", unsupported_ok: "AI", ai: "AI", transcription: "Transcription",
+    no_clips: "No clips yet.", no_clips_busy: "Clips will appear here as they finish.",
+    ffmpeg_missing: "ffmpeg is missing: {x}. Install it and restart.", setup_ok: "ready",
+  },
+  id: {
+    link: "Link video", link_ph: "https://youtube.com/watch?v=...", settings: "Pengaturan", count: "Jumlah", min: "Min (dtk)", max: "Maks (dtk)",
+    spoken: "Bahasa ucapan", auto: "Deteksi otomatis", auto_ai: "Default", captions: "Caption otomatis", make: "Buat klip", projects: "Project", no_projects: "Belum ada project.",
+    ui_lang: "Bahasa tampilan", offline: "Koneksi ke server terputus. Mencoba lagi…",
+    hero_a: "Video panjang masuk,", hero_b: "klip viral keluar.",
+    hero_p: "Paste link. AI memilih momen terbaik, memotongnya jadi vertikal 9:16 mengikuti wajah pembicara, lengkap dengan caption per kata.",
+    how1: "Paste link", how1d: "YouTube atau link lain yang didukung yt-dlp.", how2: "AI cari highlight", how2d: "Whisper mentranskrip, LLM memilih hook terbaik.",
+    how3: "Edit & unduh", how3d: "Atur di timeline, perbaiki caption, ekspor.", legal: "Hanya potong video milik sendiri atau yang boleh dipakai ulang.",
+    add: "+ Klip manual", reselect: "↻ Pilih ulang highlight", zip: "⬇ Unduh semua", delete: "Hapus project", failed: "Terjadi kesalahan", retry: "Coba lagi",
+    clips: "klip", clip: "klip", s: "dtk",
+    st_downloading: "Download", st_transcribing: "Transkripsi", st_selecting: "Cari highlight", st_rendering: "Render", st_queued: "Antre", st_done: "Selesai", st_error: "Gagal",
+    sub_wait: "Menunggu…", sub_minutes: "bisa beberapa menit", sub_queued: "Menunggu giliran…",
+    c_pending: "Menunggu", c_queued: "Antre render", c_rendering: "Merender…", c_error: "Gagal render",
+    edit: "Edit", download: "Unduh", del: "Hapus",
+    start: "Mulai", end: "Selesai", set_start: "⇤ Set ke posisi video", set_end: "Set ke posisi video ⇥", duration: "Durasi", sec: "dtk",
+    title: "Judul", show_captions: "Tampilkan caption", transcript: "Caption / transkrip",
+    words_hint: "Klik kata untuk lompat ke waktunya. Klik dua kali untuk memperbaiki kata yang salah, lalu Enter. Perbaikan berlaku untuk seluruh transkrip.",
+    k_play: "putar/jeda", k_io: "set mulai / selesai", k_seek: "geser (Shift = halus)",
+    cancel: "Batal", save: "Simpan & render", edit_clip: "Edit klip", new_clip: "Klip baru", play_clip: "▶ Putar klip", stop: "⏸ Stop", new_title: "Klip baru",
+    saved: "Disimpan, klip sedang dirender…", no_speech: "Tidak ada ucapan di bagian ini.",
+    del_clip_t: "Hapus klip ini?", del_clip_m: "“{t}” dan file hasil render-nya akan dihapus.",
+    del_job_t: "Hapus project ini?", del_job_m: "Video hasil download, transkrip, dan semua klip akan dihapus dari disk.",
+    resel_t: "Pilih ulang highlight?", resel_m: "AI akan memilih momen lagi. Semua klip yang ada sekarang akan diganti.",
+    delete_btn: "Hapus", continue: "Lanjut", unsupported_ok: "AI", ai: "AI", transcription: "Transkripsi",
+    no_clips: "Belum ada klip.", no_clips_busy: "Klip akan muncul di sini setelah selesai.",
+    ffmpeg_missing: "ffmpeg belum terpasang: {x}. Pasang lalu restart.", setup_ok: "siap",
+  },
+};
+let lang = store.get("ac-lang") || (navigator.language || "en").toLowerCase().startsWith("id") ? (store.get("ac-lang") || "id") : (store.get("ac-lang") || "en");
+const t = (k, v = {}) => (I18N[lang][k] ?? I18N.en[k] ?? k).replace(/\{(\w+)\}/g, (_, n) => v[n] ?? "");
+
+function applyI18n() {
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t(el.dataset.i18n); });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
+  document.querySelectorAll("[data-i18n-title]").forEach(el => { el.title = t(el.dataset.i18nTitle); el.setAttribute("aria-label", t(el.dataset.i18nTitle)); });
+  document.querySelectorAll("#lang-seg button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
+  $("#ed-preview").textContent = ed.preview ? t("stop") : t("play_clip");
+}
+$("#lang-seg").addEventListener("click", e => {
+  const b = e.target.closest("button");
+  if (!b) return;
+  lang = b.dataset.lang;
+  store.set("ac-lang", lang);
+  applyI18n();
+  renderSetup();
+  renderProjects();
+  $("#clips").innerHTML = "";
+  const job = jobs.find(j => j.id === current);
+  if (job) renderJob(job);
+  if (!$("#editor").hidden) $("#ed-heading").textContent = ed.clip ? t("edit_clip") : t("new_clip");
+});
+
+// ---------- State & helpers ----------
 const BUSY = ["queued", "downloading", "transcribing", "selecting", "rendering"];
-const JOB_LABEL = { queued: "Antre", downloading: "Download video", transcribing: "Transkripsi", selecting: "AI memilih momen", rendering: "Render klip", done: "Selesai", error: "Error" };
-const STEPS = ["downloading", "transcribing", "selecting", "rendering", "done"];
-const CLIP_LABEL = { pending: "Menunggu", queued: "Antre render", rendering: "Rendering…", error: "Gagal render" };
-
+const STEPS = ["downloading", "transcribing", "selecting", "rendering"];
 let jobs = [];
+let cfg = null;
 let current = location.hash.slice(1) || null;
 
 async function api(path, opts = {}) {
@@ -258,26 +492,97 @@ async function api(path, opts = {}) {
   });
   if (!r.ok) {
     let msg = r.statusText;
-    try { const d = (await r.json()).detail; msg = typeof d === "string" ? d : JSON.stringify(d); } catch {}
+    try {
+      const d = (await r.json()).detail;
+      msg = typeof d === "string" ? d : Array.isArray(d) ? d.map(x => `${(x.loc || []).slice(1).join(".")}: ${x.msg}`).join("\n") : JSON.stringify(d);
+    } catch {}
     throw new Error(msg);
   }
   return r.json();
 }
 
-let toastTimer;
 function toast(msg, bad = false) {
-  document.querySelectorAll(".toast").forEach(t => t.remove());
   const el = Object.assign(document.createElement("div"), { className: "toast" + (bad ? " bad" : ""), textContent: msg });
-  document.body.append(el);
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => el.remove(), 4000);
+  $("#toasts").append(el);
+  setTimeout(() => el.remove(), bad ? 6000 : 3500);
 }
 
-function dotClass(status) { return BUSY.includes(status) ? "busy" : status; }
+function ask(title, msg, yes, danger = false) {
+  const dlg = $("#confirm");
+  $("#c-title").textContent = title;
+  $("#c-msg").textContent = msg;
+  const y = $("#c-yes");
+  y.textContent = yes;
+  y.classList.toggle("danger", danger);
+  y.classList.toggle("primary", !danger);
+  return new Promise(res => {
+    const done = v => { dlg.close(); dlg.removeEventListener("close", onClose); res(v); };
+    const onClose = () => res(false);
+    $("#c-yes").onclick = () => done(true);
+    $("#c-no").onclick = () => done(false);
+    dlg.addEventListener("close", onClose, { once: true });
+    dlg.showModal();
+  });
+}
 
-// ---------- Daftar project ----------
+const dotClass = s => (BUSY.includes(s) ? "busy" : s);
+
+// ---------- Setup status ----------
+async function loadConfig() {
+  try { cfg = await api("/api/config"); } catch { return; }
+  $("#ver").textContent = "v" + cfg.version;
+  renderSetup();
+}
+
+function llmReady() {
+  if (!cfg) return true;
+  if (cfg.missing.length) return false;
+  if ($("#f-llm").value) return true; // the server validates an explicit choice
+  return cfg.llm.ok && cfg.whisper.ok;
+}
+
+function renderSetup() {
+  const box = $("#setup");
+  if (!cfg) return (box.hidden = true);
+  const rows = [];
+  if (cfg.missing.length) rows.push(`<div class="r"><span class="dot bad"></span><b>ffmpeg</b></div><div class="prob bad">${esc(t("ffmpeg_missing", { x: cfg.missing.join(", ") }))}</div>`);
+  rows.push(`<div class="r"><span class="dot ${cfg.llm.ok ? "ok" : "warn"}"></span>${esc(t("ai"))}: <b>${esc(cfg.llm.name)}${cfg.llm.model ? " · " + esc(cfg.llm.model) : ""}</b></div>`);
+  if (!cfg.llm.ok) rows.push(`<div class="prob">${esc(cfg.llm.problem)}</div>`);
+  rows.push(`<div class="r"><span class="dot ${cfg.whisper.ok ? "ok" : "bad"}"></span>${esc(t("transcription"))}: <b>${esc(cfg.whisper.name)} · ${esc(cfg.whisper.model)}</b></div>`);
+  if (!cfg.whisper.ok) rows.push(`<div class="prob bad">${esc(cfg.whisper.problem)}</div>`);
+  box.innerHTML = rows.join("");
+  box.hidden = false;
+  $("#go").disabled = !llmReady();
+}
+$("#f-llm").addEventListener("change", () => { if (cfg) $("#go").disabled = !llmReady(); });
+
+// ---------- Form persistence ----------
+const FORM_KEYS = ["n", "min", "max", "lang", "llm"];
+function loadForm() {
+  let saved = {};
+  try { saved = JSON.parse(store.get("ac-form") || "{}"); } catch {}
+  const f = $("#new-form");
+  for (const k of FORM_KEYS) if (saved[k] != null && f.elements[k]) f.elements[k].value = saved[k];
+  if (saved.captions === false) f.elements.captions.checked = false;
+}
+function saveForm() {
+  const f = $("#new-form");
+  const o = Object.fromEntries(FORM_KEYS.map(k => [k, f.elements[k].value]));
+  o.captions = f.elements.captions.checked;
+  store.set("ac-form", JSON.stringify(o));
+}
+
+// ---------- Project list ----------
+let failures = 0;
 async function refresh() {
-  try { jobs = await api("/api/jobs"); } catch { return; }
+  try {
+    jobs = await api("/api/jobs");
+    failures = 0;
+    $("#offline").hidden = true;
+  } catch {
+    if (++failures >= 2) $("#offline").hidden = false;
+    return;
+  }
   renderProjects();
   const job = jobs.find(j => j.id === current);
   $("#welcome").hidden = !!job;
@@ -289,8 +594,12 @@ function renderProjects() {
   $("#projects").innerHTML = jobs.map(j => `
     <button class="project ${j.id === current ? "active" : ""}" data-id="${esc(j.id)}">
       <div class="t">${esc(j.title)}</div>
-      <div class="s"><span class="dot ${dotClass(j.status)}"></span>${esc(JOB_LABEL[j.status] || j.status)} · ${j.clips.length} klip</div>
-    </button>`).join("") || `<p class="hint">Belum ada project.</p>`;
+      <div class="s"><span class="dot ${dotClass(j.status)}"></span>${esc(statusLabel(j))} · ${j.clips.length} ${t(j.clips.length === 1 ? "clip" : "clips")}</div>
+    </button>`).join("") || `<p class="hint">${t("no_projects")}</p>`;
+}
+
+function statusLabel(j) {
+  return t("st_" + j.status);
 }
 
 $("#projects").addEventListener("click", e => {
@@ -300,16 +609,20 @@ $("#projects").addEventListener("click", e => {
   location.hash = current;
   $("#clips").innerHTML = "";
   refresh();
+  if (matchMedia("(max-width: 900px)").matches) $("#main").scrollIntoView();
 });
 
 $("#new-form").addEventListener("submit", async e => {
   e.preventDefault();
   const f = new FormData(e.target);
-  const btn = e.submitter;
+  const btn = $("#go");
+  const err = $("#formerr");
+  err.hidden = true;
   btn.disabled = true;
+  saveForm();
   try {
     const job = await api("/api/jobs", { method: "POST", body: {
-      source: f.get("source"), n: +f.get("n"), min: +f.get("min"), max: +f.get("max"),
+      source: f.get("source").trim(), n: +f.get("n"), min: +f.get("min"), max: +f.get("max"),
       lang: f.get("lang") || null, llm: f.get("llm") || null, captions: f.get("captions") === "on",
     }});
     current = job.id;
@@ -317,57 +630,81 @@ $("#new-form").addEventListener("submit", async e => {
     $("#src").value = "";
     $("#clips").innerHTML = "";
     await refresh();
-  } catch (err) { toast(err.message, true); }
-  btn.disabled = false;
+  } catch (x) { err.textContent = x.message; err.hidden = false; }
+  btn.disabled = !llmReady();
 });
 
-// ---------- Detail project ----------
+// ---------- Project detail ----------
 function renderJob(job) {
   $("#job-title").textContent = job.title;
-  $("#job-src").textContent = job.source;
+  const src = $("#job-src");
+  src.textContent = job.source;
+  if (/^https?:\/\//.test(job.source)) src.href = job.source; else src.removeAttribute("href");
   const busy = BUSY.includes(job.status);
-  const ready = !!job.video && ["selecting", "rendering", "done", "error"].includes(job.status);
+  const ready = !!job.video && !["queued", "downloading", "transcribing"].includes(job.status);
   $("#btn-add").disabled = !ready;
-  $("#btn-reselect").disabled = busy;
+  $("#btn-reselect").disabled = busy || !job.video;
+  $("#btn-delete").disabled = busy;
+  const hasReady = job.clips.some(c => c.status === "ready");
+  $("#btn-zip").hidden = !hasReady;
+  $("#btn-zip").href = `/api/jobs/${job.id}/zip`;
 
-  const idx = STEPS.indexOf(job.status);
-  $("#steps").innerHTML = STEPS.slice(0, -1).map((s, i) => {
-    const cls = job.status === "done" || (idx > i) ? "ok" : idx === i ? "on" : "";
-    const extra = cls === "on" ? (job.progress ? ` · ${job.progress}` : s === "transcribing" ? " · bisa beberapa menit" : "") : "";
-    return `<span class="step ${cls}">${cls === "ok" ? "✓ " : ""}${JOB_LABEL[s]}${esc(extra)}</span>`;
-  }).join("") + (job.status === "queued" ? `<span class="step on">Antre…</span>` : "");
-
-  $("#job-err").hidden = !job.error;
-  $("#job-err").textContent = job.error || "";
+  renderSteps(job);
+  $("#job-err").hidden = job.status !== "error" || !job.error;
+  $("#job-err-m").textContent = job.error || "";
   renderClips(job);
+}
+
+function renderSteps(job) {
+  const stage = job.status === "error" ? job.failed_stage : job.status;
+  let idx = STEPS.indexOf(stage);
+  if (job.status === "done") idx = STEPS.length;
+  const failed = job.status === "error";
+  const pm = /^(\d+)%$/.exec(job.progress || "");
+  $("#steps").innerHTML = STEPS.map((s, i) => {
+    const cls = idx > i ? "ok" : idx === i ? (failed ? "bad" : "on") : "";
+    const icon = cls === "ok" ? "✓" : cls === "bad" ? "!" : i + 1;
+    let sub = "", bar = "";
+    if (cls === "on") {
+      if (job.progress) sub = job.progress;
+      else if (s === "transcribing") sub = t("sub_minutes");
+      if (s === "downloading" && pm) bar = `<div class="bar"><i style="width:${pm[1]}%"></i></div>`;
+      else bar = `<div class="bar ind"><i></i></div>`;
+    }
+    return `<div class="stp ${cls}" role="listitem"><div class="c">${icon}</div><div class="tx"><div class="l">${t("st_" + s)}</div><div class="sub">${esc(sub)}</div>${bar}</div></div>`;
+  }).join("");
+  if (job.status === "queued") $("#steps").insertAdjacentHTML("beforeend", `<div class="hint" style="align-self:center">${t("sub_queued")}</div>`);
 }
 
 function clipCard(job, c) {
   const dur = c.end - c.start;
-  const media = c.status === "ready"
-    ? `<video src="/api/jobs/${job.id}/clips/${c.id}/file?v=${c.rendered}" controls preload="metadata" playsinline></video>`
-    : `<div class="ph">${c.status === "error" ? "⚠️" : `<span class="spin"></span>`}<span>${CLIP_LABEL[c.status] || c.status}</span>${c.error ? `<small>${esc(c.error)}</small>` : ""}</div>`;
+  const ready = c.status === "ready";
+  const media = ready
+    ? `<div class="media"><video src="/api/jobs/${job.id}/clips/${c.id}/file?v=${c.rendered}" controls preload="metadata" playsinline></video>
+         ${c.score != null ? `<span class="badge score">★ ${esc(c.score)}</span>` : ""}<span class="badge dur">${dur.toFixed(0)}${t("s")}</span></div>`
+    : `<div class="ph">${c.status === "error" ? `<span class="ico">⚠️</span>` : `<span class="spin"></span>`}<span>${t("c_" + c.status)}</span>${c.error ? `<small>${esc(c.error)}</small>` : ""}</div>`;
   const locked = ["queued", "rendering"].includes(c.status);
   return `${media}
     <div class="body">
       <div class="title">${esc(c.title)}</div>
-      <div class="meta">${c.score != null ? `<span class="score">${esc(c.score)}</span>` : ""}<span>${fmt(c.start)} – ${fmt(c.end)}</span><span>${dur.toFixed(0)} dtk</span></div>
+      <div class="meta">${fmt(c.start)} – ${fmt(c.end)}</div>
       ${c.hook ? `<div class="hook">“${esc(c.hook)}”</div>` : ""}
       <div class="btns">
-        <button data-act="edit" ${locked ? "disabled" : ""}>✏️ Edit</button>
-        ${c.status === "ready" ? `<a class="dl" href="/api/jobs/${job.id}/clips/${c.id}/file?dl=1" title="Download">⬇ Unduh</a>` : ""}
-        <button data-act="delete" class="danger" ${c.status === "rendering" ? "disabled" : ""}>🗑</button>
+        <button data-act="edit" ${locked ? "disabled" : ""}>✏️ ${t("edit")}</button>
+        ${ready ? `<a class="dl" href="/api/jobs/${job.id}/clips/${c.id}/file?dl=1">⬇ ${t("download")}</a>` : ""}
+        <button data-act="delete" class="danger icon" ${c.status === "rendering" ? "disabled" : ""} title="${t("del")}" aria-label="${t("del")}">🗑</button>
       </div>
     </div>`;
 }
 
 function renderClips(job) {
   const grid = $("#clips");
+  grid.querySelectorAll(".skel, .emptyclips").forEach(el => el.remove());
   const ids = new Set(job.clips.map(c => c.id));
   [...grid.children].forEach(el => { if (!ids.has(el.dataset.id)) el.remove(); });
   for (const c of job.clips) {
-    // Hanya re-render kartu yang berubah, supaya video yang sedang diputar tidak ke-reset
-    const sig = [c.status, c.rendered, c.title, c.start, c.end, c.error].join("|");
+    // Only re-render cards that changed, so a playing video is not reset
+    const sig = [c.status, c.rendered, c.title, c.start, c.end, c.error, c.score, lang].join("|");
     let el = grid.querySelector(`[data-id="${c.id}"]`);
     if (el && el.dataset.sig === sig) continue;
     if (!el) {
@@ -378,8 +715,9 @@ function renderClips(job) {
     el.dataset.sig = sig;
     el.innerHTML = clipCard(job, c);
   }
-  if (!job.clips.length && !BUSY.includes(job.status)) {
-    grid.innerHTML = `<p class="hint">Belum ada klip.</p>`;
+  if (!job.clips.length) {
+    if (BUSY.includes(job.status)) grid.innerHTML = `<div class="skel"></div><div class="skel"></div><div class="skel"></div>`;
+    else grid.innerHTML = `<div class="emptyclips">${t("no_clips")}</div>`;
   }
 }
 
@@ -390,18 +728,31 @@ $("#clips").addEventListener("click", async e => {
   const clip = job?.clips.find(c => c.id === btn.closest(".card").dataset.id);
   if (!clip) return;
   if (btn.dataset.act === "edit") openEditor(job, clip);
-  if (btn.dataset.act === "delete" && confirm(`Hapus klip "${clip.title}"?`)) {
+  if (btn.dataset.act === "delete" && await ask(t("del_clip_t"), t("del_clip_m", { t: clip.title }), t("delete_btn"), true)) {
     try { await api(`/api/jobs/${job.id}/clips/${clip.id}`, { method: "DELETE" }); refresh(); }
     catch (err) { toast(err.message, true); }
   }
 });
 
 $("#btn-reselect").addEventListener("click", async () => {
-  if (!confirm("AI akan memilih ulang momen. Semua klip yang ada sekarang akan diganti. Lanjut?")) return;
+  if (!await ask(t("resel_t"), t("resel_m"), t("continue"))) return;
   try { await api(`/api/jobs/${current}/reselect`, { method: "POST" }); $("#clips").innerHTML = ""; refresh(); }
   catch (err) { toast(err.message, true); }
 });
-
+$("#btn-retry").addEventListener("click", async () => {
+  try { await api(`/api/jobs/${current}/retry`, { method: "POST" }); refresh(); }
+  catch (err) { toast(err.message, true); }
+});
+$("#btn-delete").addEventListener("click", async () => {
+  if (!await ask(t("del_job_t"), t("del_job_m"), t("delete_btn"), true)) return;
+  try {
+    await api(`/api/jobs/${current}`, { method: "DELETE" });
+    current = null;
+    location.hash = "";
+    $("#clips").innerHTML = "";
+    refresh();
+  } catch (err) { toast(err.message, true); }
+});
 $("#btn-add").addEventListener("click", () => openEditor(jobs.find(j => j.id === current), null));
 
 // ---------- Editor ----------
@@ -418,10 +769,11 @@ async function openEditor(job, clip) {
   ed.start = clip ? clip.start : 0;
   ed.end = clip ? clip.end : Math.min(30, ed.dur);
 
-  $("#ed-heading").textContent = clip ? "Edit klip" : "Klip baru";
-  $("#ed-title").value = clip ? clip.title : "Klip baru";
+  $("#ed-heading").textContent = clip ? t("edit_clip") : t("new_clip");
+  $("#ed-title").value = clip ? clip.title : t("new_title");
   $("#ed-captions").checked = clip ? clip.captions !== false : true;
   $("#ed-info").textContent = clip?.reason ? `💡 ${clip.reason}` : "";
+  $("#ed-preview").textContent = t("play_clip");
   $("#editor").hidden = false;
 
   video.src = `/api/jobs/${job.id}/video`;
@@ -431,6 +783,7 @@ async function openEditor(job, clip) {
     update(true);
   }, { once: true });
   update(true);
+  $("#ed-title").focus();
 }
 
 function closeEditor() {
@@ -440,13 +793,13 @@ function closeEditor() {
   $("#editor").hidden = true;
 }
 
-const pct = t => ((t - ed.win[0]) / (ed.win[1] - ed.win[0])) * 100;
+const pct = x => ((x - ed.win[0]) / (ed.win[1] - ed.win[0])) * 100;
 
 function update(recenter) {
   ed.start = Math.max(0, Math.min(ed.start, ed.dur - 1));
   ed.end = Math.max(ed.start + 1, Math.min(ed.end, ed.dur));
   if (recenter) {
-    // Timeline di-zoom ke sekitar klip supaya mudah digeser walau videonya panjang
+    // Zoom the timeline around the clip so it stays easy to drag on long videos
     const pad = Math.max(15, (ed.end - ed.start) * 0.6);
     ed.win = [Math.max(0, ed.start - pad), Math.min(ed.dur, ed.end + pad)];
     renderWords();
@@ -458,8 +811,9 @@ function update(recenter) {
   if (document.activeElement !== $("#ed-start")) $("#ed-start").value = ed.start.toFixed(1);
   if (document.activeElement !== $("#ed-end")) $("#ed-end").value = ed.end.toFixed(1);
   const d = ed.end - ed.start;
-  $("#ed-dur").textContent = `${d.toFixed(1)} dtk`;
+  $("#ed-dur").textContent = `${d.toFixed(1)} ${t("sec")}`;
   $("#ed-dur").style.color = d > 180 ? "var(--danger)" : "";
+  $("#ed-save").disabled = d > 180;
   document.querySelectorAll("#words .w").forEach(el => {
     const w = ed.words[+el.dataset.i];
     el.classList.toggle("out", w.end <= ed.start || w.start >= ed.end);
@@ -474,16 +828,16 @@ function renderWords() {
     const edit = ed.edits.get(`${w.seg}:${w.idx}`);
     html.push(`<span class="w ${edit ? "edited" : ""}" data-i="${i}">${esc(edit ? edit.word : w.word)}</span>`);
   });
-  $("#words").innerHTML = html.join(" ") || `<span class="hint">Tidak ada ucapan di bagian ini.</span>`;
+  $("#words").innerHTML = html.join(" ") || `<span class="hint">${t("no_speech")}</span>`;
 }
 
 function playhead() {
-  const t = video.currentTime;
-  const p = pct(t);
+  const x = video.currentTime;
+  const p = pct(x);
   $("#tl-play").style.display = p >= 0 && p <= 100 ? "" : "none";
   $("#tl-play").style.left = p + "%";
   document.querySelectorAll("#words .w.now").forEach(el => el.classList.remove("now"));
-  const i = ed.words.findIndex(w => t >= w.start && t < w.end);
+  const i = ed.words.findIndex(w => x >= w.start && x < w.end);
   if (i >= 0) $(`#words .w[data-i="${i}"]`)?.classList.add("now");
 }
 
@@ -491,8 +845,8 @@ video.addEventListener("timeupdate", () => {
   if (ed.preview && video.currentTime >= ed.end) { video.pause(); ed.preview = false; }
   playhead();
 });
-video.addEventListener("pause", () => { ed.preview = false; $("#ed-preview").textContent = "▶ Putar klip"; });
-video.addEventListener("play", () => { if (ed.preview) $("#ed-preview").textContent = "⏸ Stop"; });
+video.addEventListener("pause", () => { ed.preview = false; $("#ed-preview").textContent = t("play_clip"); });
+video.addEventListener("play", () => { if (ed.preview) $("#ed-preview").textContent = t("stop"); });
 
 $("#ed-preview").addEventListener("click", () => {
   if (ed.preview) return video.pause();
@@ -501,7 +855,7 @@ $("#ed-preview").addEventListener("click", () => {
   video.play();
 });
 
-// Timeline: geser handle untuk ubah start/end, klik track untuk seek
+// Timeline: drag the handles to change start/end, click the track to seek
 const tl = $("#tl");
 const timeAt = x => { const r = tl.getBoundingClientRect(); return ed.win[0] + ((x - r.left) / r.width) * (ed.win[1] - ed.win[0]); };
 tl.addEventListener("pointerdown", e => {
@@ -514,9 +868,9 @@ tl.addEventListener("pointerdown", e => {
 });
 tl.addEventListener("pointermove", e => {
   if (!ed.drag) return;
-  const t = Math.max(ed.win[0], Math.min(timeAt(e.clientX), ed.win[1]));
-  if (ed.drag === "start") ed.start = Math.min(t, ed.end - 1);
-  else ed.end = Math.max(t, ed.start + 1);
+  const x = Math.max(ed.win[0], Math.min(timeAt(e.clientX), ed.win[1]));
+  if (ed.drag === "start") ed.start = Math.min(x, ed.end - 1);
+  else ed.end = Math.max(x, ed.start + 1);
   video.currentTime = ed[ed.drag];
   update(false);
 });
@@ -537,7 +891,7 @@ document.querySelectorAll("[data-set]").forEach(b => b.addEventListener("click",
   update(true);
 }));
 
-// Kata: klik = seek, dobel klik = edit
+// Words: click = seek, double-click = edit
 const words = $("#words");
 words.addEventListener("click", e => {
   const el = e.target.closest(".w");
@@ -573,7 +927,20 @@ words.addEventListener("focusout", e => {
 
 $("#ed-close").addEventListener("click", closeEditor);
 $("#ed-cancel").addEventListener("click", closeEditor);
-document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("#editor").hidden && !e.target.isContentEditable) closeEditor(); });
+document.addEventListener("keydown", e => {
+  if ($("#editor").hidden) return;
+  const typing = e.target.isContentEditable || ["INPUT", "SELECT", "TEXTAREA"].includes(e.target.tagName);
+  if (e.key === "Escape" && !e.target.isContentEditable && !$("#confirm").open) return closeEditor();
+  if (typing || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.toLowerCase();
+  if (e.key === " " && e.target.tagName !== "BUTTON") { e.preventDefault(); video.paused ? video.play() : video.pause(); }
+  else if (k === "i") { ed.start = +video.currentTime.toFixed(2); update(true); }
+  else if (k === "o") { ed.end = +video.currentTime.toFixed(2); update(true); }
+  else if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+    e.preventDefault();
+    video.currentTime = Math.max(0, video.currentTime + (e.key === "ArrowLeft" ? -1 : 1) * (e.shiftKey ? 0.1 : 1));
+  }
+});
 
 $("#ed-save").addEventListener("click", async () => {
   const btn = $("#ed-save");
@@ -585,14 +952,19 @@ $("#ed-save").addEventListener("click", async () => {
     if (clip) await api(`/api/jobs/${job.id}/clips/${clip.id}`, { method: "PUT", body });
     else await api(`/api/jobs/${job.id}/clips`, { method: "POST", body });
     closeEditor();
-    toast("Disimpan, klip sedang dirender…");
+    toast(t("saved"));
     refresh();
   } catch (err) { toast(err.message, true); }
   btn.disabled = false;
 });
 
+// ---------- Boot ----------
+applyI18n();
+loadForm();
+loadConfig();
 refresh();
 setInterval(() => { if ($("#editor").hidden || jobs.some(j => BUSY.includes(j.status))) refresh(); }, 2000);
+setInterval(loadConfig, 30000);
 </script>
 </body>
 </html>

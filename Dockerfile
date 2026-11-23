@@ -21,4 +21,6 @@ ENV AUTOCLIPPER_DATA_DIR=/data \
 
 VOLUME ["/data", "/models"]
 EXPOSE 8765
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s \
+  CMD python -c "import urllib.request as u; u.urlopen('http://127.0.0.1:8765/api/health', timeout=3)" || exit 1
 CMD ["python", "-m", "autoclipper.web", "--no-browser"]

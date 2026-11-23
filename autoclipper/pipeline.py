@@ -1,9 +1,8 @@
-"""Pipeline auto clip yang dipakai bersama oleh CLI dan web.
+"""The auto-clip pipeline shared by the CLI and the web UI.
 
-State tiap project disimpan di work/<id>/job.json, hasil klip di output/<id>/.
+Each project's state lives in work/<id>/job.json, the rendered clips in output/<id>/.
 """
 import hashlib
-import os
 import json
 import re
 import shutil
@@ -13,15 +12,15 @@ import uuid
 from pathlib import Path
 
 from . import captions
+from .config import DATA_DIR, OUT, WORK
+from .errors import explain
 from .download import download
 from .highlights import default_llm, default_llm_model, find_highlights
 from .reframe import crop_box
 from .render import render_clip
 from .transcribe import DEFAULT_MODEL, transcribe
 
-ROOT = Path(os.environ.get("AUTOCLIPPER_DATA_DIR") or Path(__file__).resolve().parent.parent).resolve()
-WORK = ROOT / "work"
-OUT = ROOT / "output"
+ROOT = DATA_DIR
 DEFAULT_OPTS = {
     "n": 5,
     "min": 20,
@@ -93,7 +92,7 @@ def new_job(source: str, existing: dict | None = None, **opts) -> dict:
     return job
 
 
-def new_clip(start: float, end: float, title: str = "Klip", **extra) -> dict:
+def new_clip(start: float, end: float, title: str = "Clip", **extra) -> dict:
     return {
         "id": uuid.uuid4().hex[:6],
         "start": float(start),
@@ -106,24 +105,24 @@ def new_clip(start: float, end: float, title: str = "Klip", **extra) -> dict:
 
 
 def run(job: dict, reselect: bool = False, log=print) -> dict:
-    """Jalankan seluruh pipeline. Tahap yang sudah ada hasilnya (download, transkrip, klip) di-skip."""
+    """Run the whole pipeline. Stages that already have results (download, transcript, clips) are skipped."""
     o = job["opts"]
 
     def stage(status: str, msg: str) -> None:
-        job.update(status=status, progress=None)
+        job.update(status=status, stage=status, progress=None)
         save_job(job)
         log(f"\n▶ {msg}")
 
     try:
-        stage("downloading", "Download video")
+        stage("downloading", "Downloading video")
         video, title = download(job["source"], job_dir(job["id"]), lambda p: job.update(progress=p))
         job.update(video=str(video), title=title)
 
-        stage("transcribing", "Transkripsi (Whisper)")
+        stage("transcribing", "Transcribing (Whisper)")
         segments = transcribe(video, transcript_path(job["id"]), o["lang"], o["whisper_model"])
 
         if reselect or not job["clips"]:
-            stage("selecting", f"Cari highlight ({o['llm'] or default_llm()})")
+            stage("selecting", f"Finding highlights ({o['llm'] or default_llm()})")
             for old in job["clips"]:
                 if old.get("file"):
                     Path(old["file"]).unlink(missing_ok=True)
@@ -132,7 +131,7 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
                 new_clip(
                     c["start"],
                     c["end"],
-                    c.get("title") or "Klip",
+                    c.get("title") or "Clip",
                     captions=o["captions"],
                     **{k: c.get(k) for k in ("hook", "reason", "score")},
                 )
@@ -144,15 +143,15 @@ def run(job: dict, reselect: bool = False, log=print) -> dict:
         for clip in job["clips"]:
             if clip["status"] != "ready":
                 clip.update(status="pending", error=None)
-        stage("rendering", f"Render {len(job['clips'])} klip")
+        stage("rendering", f"Rendering {len(job['clips'])} clip(s)")
         for i, clip in enumerate(job["clips"], 1):
             job["progress"] = f"{i}/{len(job['clips'])}"
             if clip["status"] != "ready":
                 render(job, clip, log)
 
-        stage("done", f"Selesai! Klip ada di {OUT / job['id']}/")
+        stage("done", f"Done! Clips are in {OUT / job['id']}/")
     except Exception as e:
-        job.update(status="error", error=str(e))
+        job.update(status="error", error=explain(e), progress=None, failed_stage=job.get("stage"))
         save_job(job)
         raise
     return job
@@ -177,7 +176,7 @@ def render(job: dict, clip: dict, log=print) -> None:
         clip.update(file=str(out), status="ready", rendered=time.time())
         log(f"  → {out} ({time.time() - t:.0f}s)")
     except Exception as e:
-        clip.update(status="error", error=str(e))
+        clip.update(status="error", error=explain(e))
         raise
     finally:
         shutil.rmtree(cap_dir, ignore_errors=True)

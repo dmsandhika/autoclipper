@@ -67,11 +67,18 @@ python -m autoclipper "https://www.youtube.com/watch?v=XXXX" --lang en -n 3
 
 Results go to `output/<video-id>/`. See `python -m autoclipper -h` for all options.
 
-## Clip editor
+## Web UI
 
-- Drag the yellow handles on the timeline (or use the −/+ buttons) to set start/end.
+- Setup status panel: shows which AI and Whisper backend are active and tells you what is missing (API key, ffmpeg, Ollama not running) *before* you start a long job.
+- Live progress per stage, **Retry** on failures, **Delete project** to free disk space, **Download all** as a zip.
+- Interface in English or Indonesian (switch at the bottom of the sidebar); follows light/dark mode.
+
+### Clip editor
+
+- Drag the yellow handles on the timeline (or use −/+) to set start/end.
+- Shortcuts: `Space` play/pause, `I` / `O` set start/end at the playhead, `←` `→` seek (Shift = fine).
 - Click a word in the transcript to jump to it; double-click to fix a misheard caption word.
-- "Save & Render" re-renders the clip. "+ Manual clip" makes a clip from any range.
+- "Save & render" re-renders the clip. "+ Manual clip" makes a clip from any range.
 
 ## Configuration reference
 
@@ -82,8 +89,28 @@ Results go to `output/<video-id>/`. See `python -m autoclipper -h` for all optio
 | `AUTOCLIPPER_HOST` / `AUTOCLIPPER_PORT` | Web server bind (default `127.0.0.1:8765`) |
 | `AUTOCLIPPER_FONT` | Path to a custom caption font (default: bundled Anton) |
 | `AUTOCLIPPER_COOKIES` | cookies.txt for yt-dlp |
+| `AUTOCLIPPER_PASSWORD` | Enables HTTP Basic auth for the web UI (any username) |
+| `AUTOCLIPPER_ALLOW_LOCAL` | `1` lets the web UI process local file paths (always on when bound to localhost) |
+| `AUTOCLIPPER_LLM_MAX_CHARS` | Max transcript characters per LLM request; longer videos are split automatically |
 
-The web UI has no authentication. Keep it bound to localhost (the compose file does) and do not expose it to the internet.
+### Security notes
+
+- By default the server binds to `127.0.0.1` and the compose file only publishes the port on localhost.
+- If you expose it to a network, set `AUTOCLIPPER_PASSWORD` and put it behind HTTPS (a reverse proxy). Local file paths and non-http(s) sources are rejected when the server is not bound to localhost.
+- API keys are read from the environment only. They are never sent to the browser or written to logs.
+
+### Limitations
+
+- The bundled caption font (Anton) covers Latin scripts. For other scripts (Japanese, Arabic, ...) set `AUTOCLIPPER_FONT` to a font that has those glyphs.
+- One job is processed at a time; others wait in the queue. Running jobs cannot be cancelled yet.
+- Face-aware cropping follows the main speaker; videos with several people at once are centered on the median face position.
+
+## Development
+
+```bash
+pip install -r requirements.txt -r requirements-dev.txt
+python -m pytest -q tests
+```
 
 ## License
 
